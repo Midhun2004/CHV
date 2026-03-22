@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>CHV-Guard · Vault</title>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --a:#7c3aed;--a2:#0ea5e9;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;
+  --bg:#0a0a0f;--surf:rgba(14,14,26,.85);--bord:rgba(255,255,255,.09);
+  --tx:#e4e4f0;--mt:#6b6b8a;
+  --fn:'Space Grotesk',sans-serif;--mo:'JetBrains Mono',monospace;
+}
+html,body{min-height:100%;font-family:var(--fn);background:var(--bg);color:var(--tx);overflow-x:hidden;}
+.hidden{display:none!important;}
+#bgC{position:fixed;inset:0;z-index:0;pointer-events:none;}
+.page{min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  align-items:center;padding:32px 16px;position:relative;z-index:5;}
+
+/* CARD */
+.card{width:min(480px,96vw);padding:42px 48px;border-radius:22px;
+  background:var(--surf);backdrop-filter:blur(26px);
+  border:1px solid var(--bord);
+  box-shadow:0 10px 48px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.06);
+  display:flex;flex-direction:column;align-items:center;
+  animation:su .42s cubic-bezier(.16,1,.3,1) both;}
+@keyframes su{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;
+  border-radius:99px;background:rgba(124,58,237,.15);
+  border:1px solid rgba(124,58,237,.35);
+  font-size:11px;font-weight:700;letter-spacing:2px;color:#a78bfa;
+  text-transform:uppercase;margin-bottom:16px;}
+.blink{width:7px;height:7px;background:var(--a);border-radius:50%;animation:bl 1.5s infinite;}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.2}}
+.card h1{font-size:clamp(22px,5vw,32px);font-weight:700;letter-spacing:-.5px;text-align:center;
+  background:linear-gradient(135deg,#fff 0%,#a78bfa 55%,#38bdf8 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;margin-bottom:6px;}
+.sub{font-size:13px;color:var(--mt);margin-bottom:22px;text-align:center;line-height:1.6;}
+
+/* INPUTS */
+.field{width:100%;margin-bottom:13px;}
+.field label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--mt);margin-bottom:6px;}
+.field input{width:100%;padding:12px 15px;background:rgba(255,255,255,.04);
+  border:1px solid var(--bord);border-radius:10px;color:var(--tx);
+  font-family:var(--fn);font-size:14px;outline:none;transition:.2s;}
+.field input:focus{border-color:var(--a);box-shadow:0 0 0 3px rgba(124,58,237,.18);}
+.field input::placeholder{color:var(--mt);}
+
+/* BUTTONS */
+.bp{width:100%;padding:13px;border:none;border-radius:11px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;
+  font-family:var(--fn);font-size:15px;font-weight:700;cursor:pointer;
+  transition:.2s;margin-top:8px;box-shadow:0 4px 24px rgba(124,58,237,.4);}
+.bp:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,58,237,.55);}
+.bp:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+.bg2{width:100%;padding:11px;border:1px solid var(--bord);border-radius:11px;
+  background:transparent;color:var(--mt);font-family:var(--fn);font-size:14px;
+  cursor:pointer;transition:.2s;margin-top:6px;}
+.bg2:hover{border-color:rgba(124,58,237,.4);color:var(--tx);background:rgba(124,58,237,.06);}
+
+/* ALERT */
+.ale{padding:9px 13px;border-radius:8px;font-size:13px;font-weight:500;margin-top:9px;width:100%;}
+.ale.e{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;}
+.ale.ok{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;}
+
+/* FACE SCAN */
+.scan-box{position:relative;width:240px;height:195px;border-radius:14px;overflow:hidden;
+  border:2px solid var(--a);box-shadow:0 0 28px rgba(124,58,237,.35);margin-top:10px;}
+.scan-box video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+.scan-ov{position:absolute;inset:0;border-radius:12px;
+  background:linear-gradient(0deg,rgba(124,58,237,.22),transparent 60%);}
+.scan-bar{width:100%;height:5px;background:rgba(255,255,255,.08);
+  border-radius:4px;margin-top:12px;overflow:hidden;}
+.scan-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--a),var(--a2));
+  border-radius:4px;transition:width .22s;}
+.reject-msg{font-size:13px;font-weight:700;color:#ef4444;margin-top:8px;text-align:center;}
+
+/* MOUSE CAL */
+.mzone{width:100%;max-width:420px;height:175px;
+  border:2px dashed rgba(124,58,237,.35);border-radius:13px;
+  position:relative;background:rgba(124,58,237,.04);
+  overflow:hidden;margin:14px auto 0;}
+.tdot{width:30px;height:30px;background:var(--ok);border-radius:50%;
+  position:absolute;cursor:pointer;display:none;
+  box-shadow:0 0 16px rgba(16,185,129,.8);}
+
+/* VOICE */
+.mring{position:relative;width:130px;height:130px;display:flex;
+  align-items:center;justify-content:center;margin:18px auto;cursor:pointer;}
+.mcore{width:60px;height:60px;border-radius:50%;
+  background:linear-gradient(145deg,#7c3aed,#0ea5e9);
+  display:flex;align-items:center;justify-content:center;font-size:22px;z-index:2;}
+.mring .ring{position:absolute;border-radius:50%;
+  border:2px solid rgba(124,58,237,.35);animation:vw 2.4s infinite;}
+.r1{width:85px;height:85px;}.r2{width:112px;height:112px;animation-delay:.6s;}
+@keyframes vw{0%{transform:scale(.8);opacity:.8}70%{transform:scale(1.2);opacity:0}100%{opacity:0}}
+.phrase-box{width:100%;background:rgba(124,58,237,.12);
+  border:1px solid rgba(124,58,237,.3);border-radius:10px;
+  padding:10px 15px;margin-bottom:12px;text-align:center;}
+.phrase-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:#a78bfa;margin-bottom:4px;}
+.phrase-txt{font-size:17px;font-weight:700;color:#fff;}
+
+/* TOAST */
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(70px);
+  background:#111;color:#fff;padding:11px 22px;border-radius:99px;
+  font-size:13px;font-weight:600;z-index:2000;opacity:0;
+  transition:.35s cubic-bezier(.16,1,.3,1);}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.err{background:#ef4444;}
+</style>
+
+<style>
+/* VAULT LAYOUT */
+body{background:#f0f2f7;color:#111;}
+#vault{width:100vw;min-height:100vh;display:flex;flex-direction:column;}
+.vnav{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 26px;height:62px;
+  display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);}
+.nlogo{font-weight:800;font-size:16px;color:#111;margin-right:auto;}
+.nlogo span{color:#7c3aed;}
+.avt{width:34px;height:34px;border-radius:50%;
+  background:linear-gradient(135deg,#7c3aed,#0ea5e9);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:#fff;}
+.lout{border:none;background:transparent;cursor:pointer;color:#888;
+  font-size:12px;font-weight:600;padding:6px 11px;border-radius:8px;transition:.2s;}
+.lout:hover{background:#fee2e2;color:#ef4444;}
+.vbody{display:flex;flex:1;}
+.vmain{flex:1;padding:26px;overflow-y:auto;}
+.vaside{width:286px;background:#fff;border-left:1px solid #e5e7eb;
+  padding:20px 17px;display:flex;flex-direction:column;gap:15px;overflow-y:auto;}
+
+/* STATS */
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.sc{background:#fff;border-radius:12px;padding:13px;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);border:1px solid #f0f0f5;}
+.slbl{font-size:10px;font-weight:700;letter-spacing:1px;color:#888;text-transform:uppercase;}
+.sval{font-size:24px;font-weight:800;margin-top:4px;letter-spacing:-1px;}
+.sval.p{color:#7c3aed}.sval.b{color:#2563eb}.sval.g{color:#10b981}
+
+/* TABS */
+.tabs{display:flex;gap:2px;background:#f0f0f5;border-radius:10px;
+  padding:3px;margin-bottom:17px;width:fit-content;}
+.tab{padding:7px 18px;border-radius:8px;font-size:13px;font-weight:700;
+  cursor:pointer;border:none;background:transparent;color:#888;transition:.2s;}
+.tab.on{background:#fff;color:#7c3aed;box-shadow:0 2px 6px rgba(0,0,0,.08);}
+
+/* UPLOAD ZONE */
+.uzone{background:#fff;border:2px dashed #d1d5db;border-radius:13px;
+  padding:22px;text-align:center;cursor:pointer;transition:.2s;margin-bottom:17px;}
+.uzone:hover{border-color:#7c3aed;background:#faf5ff;}
+
+/* FILE GRID */
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;}
+.fc{background:#fff;padding:15px 12px;border-radius:13px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05);border:1px solid #f0f0f5;
+  display:flex;flex-direction:column;align-items:center;text-align:center;transition:.2s;}
+.fc:hover{transform:translateY(-2px);box-shadow:0 7px 22px rgba(0,0,0,.1);}
+.fc.imm{border:2px solid #7c3aed;background:#faf5ff;}
+.fi{font-size:32px;margin-bottom:8px;}
+.fn2{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;width:100%;color:#222;}
+.fm{font-size:11px;color:#aaa;margin-top:2px;}
+.fhash{font-size:9px;color:#7c3aed;background:#f5f3ff;padding:3px 5px;
+  border-radius:4px;margin-top:6px;width:100%;word-break:break-all;
+  font-family:var(--mo);text-align:left;}
+.fa{display:flex;gap:5px;margin-top:10px;width:100%;}
+.bsm{flex:1;padding:5px 0;border:none;border-radius:7px;
+  font-size:11px;font-weight:700;cursor:pointer;}
+.bv{background:#eff6ff;color:#2563eb;}.bv:hover{background:#dbeafe;}
+.bd{background:#fef2f2;color:#ef4444;flex:0;padding:5px 8px;}
+.bch{background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;font-size:10px;}
+.bch:hover{opacity:.85;}
+.ibadge{display:inline-flex;align-items:center;gap:4px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;
+  font-size:9px;font-weight:800;padding:3px 7px;border-radius:99px;
+  letter-spacing:1px;margin-top:4px;}
+.empty{text-align:center;padding:42px;color:#bbb;font-size:14px;grid-column:1/-1;}
+.fbar{display:flex;gap:7px;margin-bottom:15px;flex-wrap:wrap;align-items:center;}
+.fbtn{padding:6px 13px;border-radius:99px;border:1px solid #e5e7eb;
+  background:#fff;font-family:var(--fn);font-size:12px;font-weight:600;
+  cursor:pointer;transition:.2s;color:#555;}
+.fbtn.on,.fbtn:hover{background:#7c3aed;color:#fff;border-color:#7c3aed;}
+.srch{margin-left:auto;padding:6px 12px;border:1px solid #e5e7eb;
+  border-radius:99px;font-family:var(--fn);font-size:13px;outline:none;width:170px;}
+.srch:focus{border-color:#7c3aed;}
+
+/* SIDEBAR */
+.hlbl{font-size:11px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:#888;margin-bottom:6px;}
+.cambox{border-radius:11px;overflow:hidden;border:2px solid #7c3aed;position:relative;background:#000;}
+#mCam{width:100%;display:block;transform:scaleX(-1);}
+.livebadge{position:absolute;top:6px;left:6px;background:rgba(16,185,129,.9);
+  color:#fff;font-size:9px;font-weight:800;padding:2px 7px;
+  border-radius:99px;letter-spacing:1px;}
+.tp{background:#f9fafb;border:1px solid #e5e7eb;border-radius:9px;padding:12px;}
+.th{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:6px;}
+.tbar{height:7px;background:#e5e7eb;border-radius:4px;overflow:hidden;}
+.tfill{height:100%;border-radius:4px;transition:width .4s,background .4s;}
+.mst{display:flex;align-items:center;gap:7px;font-size:12px;margin-top:8px;}
+.sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+#mChart{width:100%;height:33px;border-radius:6px;
+  background:#f0f0f5;display:block;margin-top:6px;}
+.cblock{background:#f9fafb;border:1px solid #e5e7eb;border-radius:9px;padding:8px;
+  font-family:var(--mo);font-size:9.5px;color:#555;
+  display:flex;flex-direction:column;gap:3px;}
+.cblock .ch{color:#7c3aed;word-break:break-all;}
+.cst{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;
+  padding:6px 10px;border-radius:8px;margin-bottom:6px;}
+.cst.ok{background:#ecfdf5;color:#059669;}.cst.err{background:#fef2f2;color:#dc2626;}
+
+/* UPLOAD MODAL */
+#upModal{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:700;
+  display:flex;justify-content:center;align-items:center;}
+.um{background:#fff;border-radius:18px;padding:34px;width:480px;max-width:95vw;}
+.um h2{font-size:19px;font-weight:700;color:#111;margin-bottom:5px;}
+.um p{font-size:13px;color:#888;margin-bottom:17px;}
+.um-drop{border:2px dashed #d1d5db;border-radius:12px;padding:28px;
+  text-align:center;cursor:pointer;transition:.2s;margin-bottom:14px;}
+.um-drop:hover{border-color:#7c3aed;background:#faf5ff;}
+#umList{display:flex;flex-direction:column;gap:7px;
+  max-height:170px;overflow-y:auto;margin-bottom:13px;}
+.umrow{display:flex;align-items:center;gap:9px;padding:7px 11px;
+  background:#f9fafb;border-radius:8px;font-size:13px;}
+.umrow span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.um-up{width:100%;padding:11px;border:none;border-radius:10px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;
+  font-family:var(--fn);font-size:14px;font-weight:700;cursor:pointer;}
+.um-cancel{width:100%;padding:9px;border:1px solid #e5e7eb;border-radius:10px;
+  background:transparent;color:#888;font-family:var(--fn);font-size:14px;
+  cursor:pointer;margin-top:5px;}
+
+/* CAPTCHA */
+.cap-ov{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:800;
+  display:flex;align-items:center;justify-content:center;}
+.cap-box{background:#1a1a2e;border:2px solid var(--a,#7c3aed);
+  border-radius:18px;padding:30px 34px;width:400px;text-align:center;}
+.cap-box h2{font-size:18px;font-weight:700;color:#fff;margin-bottom:4px;}
+.cap-box p{font-size:13px;color:#6b6b8a;margin-bottom:16px;}
+.cap-zone{width:100%;height:165px;border:2px solid rgba(124,58,237,.3);
+  border-radius:11px;position:relative;background:rgba(124,58,237,.04);
+  overflow:hidden;cursor:none;}
+.cap-dot{width:32px;height:32px;background:#10b981;border-radius:50%;
+  position:absolute;box-shadow:0 0 16px rgba(16,185,129,.7);display:none;}
+.cap-cur{width:10px;height:10px;background:#fff;border-radius:50%;
+  position:absolute;pointer-events:none;transform:translate(-50%,-50%);}
+.cprog{display:flex;gap:6px;justify-content:center;margin-top:11px;}
+.cdot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.15);transition:.2s;}
+.cdot.done{background:#10b981;}
+.cap-st{margin-top:10px;font-size:13px;font-weight:700;color:#f59e0b;}
+
+/* FILE PREVIEW */
+#pm{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1000;
+  display:flex;justify-content:center;align-items:center;
+  flex-direction:column;padding:36px;}
+.mc{position:absolute;top:16px;right:20px;background:rgba(255,255,255,.12);
+  color:#fff;border:none;padding:8px 15px;border-radius:9px;
+  cursor:pointer;font-family:var(--fn);font-weight:700;}
+.mfn{color:#fff;margin-bottom:13px;font-size:13px;font-weight:600;opacity:.7;}
+
+/* HASH MODAL */
+#hashModal{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1100;
+  display:flex;justify-content:center;align-items:center;padding:28px;}
+.hm{background:#1a1a2e;border:1px solid rgba(124,58,237,.4);border-radius:18px;
+  padding:34px;max-width:560px;width:100%;}
+.hm h2{font-size:17px;font-weight:700;color:#fff;margin-bottom:14px;}
+.hrow{margin-bottom:10px;}
+.hlb{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+  color:#6b6b8a;margin-bottom:3px;}
+.hval{font-family:var(--mo);font-size:11px;color:#a78bfa;word-break:break-all;
+  background:rgba(124,58,237,.08);padding:7px 9px;border-radius:7px;
+  border:1px solid rgba(124,58,237,.2);}
+.hclose{margin-top:16px;width:100%;padding:10px;border:none;border-radius:9px;
+  background:rgba(255,255,255,.1);color:#fff;font-family:var(--fn);
+  font-weight:700;cursor:pointer;}
+
+@media(max-width:900px){.sgrid{grid-template-columns:repeat(2,1fr)}.vaside{display:none}}
+@media(max-width:600px){.vnav{padding:0 13px}.vmain{padding:14px}}
+
+/* ── IPFS MODAL ── */
+#ipfsModal{position:fixed;inset:0;background:rgba(0,0,0,.90);z-index:900;
+  display:flex;justify-content:center;align-items:flex-start;
+  padding:40px 16px;overflow-y:auto;}
+.ipfs-wrap{background:#0f0f1c;border:1px solid rgba(124,58,237,.45);
+  border-radius:20px;padding:34px 32px;width:520px;max-width:100%;
+  color:#e4e4f0;position:relative;}
+.ipfs-wrap h2{font-size:20px;font-weight:800;color:#fff;margin-bottom:3px;}
+.ipfs-wrap .isub{font-size:12px;color:#6b6b8a;margin-bottom:20px;}
+/* file strip */
+.ipfs-file-strip{display:flex;align-items:center;gap:12px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:11px;padding:11px 15px;margin-bottom:20px;}
+.ipfs-file-strip .ifi{font-size:26px;}
+.ipfs-file-strip .ifn{font-weight:700;color:#fff;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;font-size:14px;}
+.ipfs-file-strip .ifs{font-size:11px;color:#6b6b8a;margin-top:2px;}
+/* tabs */
+.iptabs{display:flex;gap:3px;background:rgba(255,255,255,.05);
+  border-radius:10px;padding:3px;margin-bottom:20px;}
+.iptab{flex:1;padding:9px 6px;border-radius:8px;border:none;
+  background:transparent;color:#888;font-family:var(--fn);
+  font-size:13px;font-weight:700;cursor:pointer;transition:.2s;}
+.iptab.on{background:rgba(124,58,237,.3);color:#c4b5fd;}
+/* panes */
+.ippane{display:flex;flex-direction:column;gap:13px;}
+.ippane.hidden{display:none;}
+/* field */
+.ipf{display:flex;flex-direction:column;gap:5px;}
+.ipf label{font-size:10px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:#6b6b8a;}
+.ipf input{padding:11px 14px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);border-radius:10px;
+  color:#e4e4f0;font-family:var(--fn);font-size:13px;outline:none;transition:.2s;}
+.ipf input:focus{border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.2);}
+.ipf input::placeholder{color:#444;}
+/* divider */
+.ip-or{text-align:center;font-size:11px;font-weight:700;
+  letter-spacing:2px;color:#3a3a5c;margin:2px 0;}
+/* info box */
+.ipinfo{background:rgba(124,58,237,.07);border:1px solid rgba(124,58,237,.2);
+  border-radius:10px;padding:12px 14px;font-size:12px;
+  color:#a78bfa;line-height:1.65;}
+.ipinfo code{background:rgba(0,0,0,.3);padding:1px 5px;border-radius:4px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;}
+/* upload btn */
+.ipup{padding:13px;border:none;border-radius:11px;width:100%;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;
+  font-family:var(--fn);font-size:14px;font-weight:700;cursor:pointer;
+  transition:.2s;box-shadow:0 4px 18px rgba(124,58,237,.4);}
+.ipup:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(124,58,237,.55);}
+.ipup:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+/* result */
+.ipresult{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.3);
+  border-radius:11px;padding:16px;margin-top:4px;}
+.ipresult-title{font-size:14px;font-weight:800;color:#34d399;margin-bottom:10px;}
+.ipresult-lbl{font-size:9px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:#6b6b8a;margin-bottom:3px;}
+.ipresult-cid{font-family:'JetBrains Mono',monospace;font-size:11px;
+  color:#34d399;word-break:break-all;background:rgba(0,0,0,.4);
+  padding:9px 11px;border-radius:8px;border:1px solid rgba(16,185,129,.2);}
+.ipresult-links{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+.ipresult-links a{display:flex;align-items:center;gap:7px;padding:9px 12px;
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;color:#60a5fa;font-size:12px;font-weight:600;
+  text-decoration:none;transition:.2s;}
+.ipresult-links a:hover{background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.3);}
+/* cancel */
+.ipcancel{padding:10px;border:1px solid rgba(255,255,255,.1);
+  border-radius:10px;background:transparent;color:#6b6b8a;
+  font-family:var(--fn);font-size:13px;cursor:pointer;width:100%;
+  margin-top:4px;transition:.2s;}
+.ipcancel:hover{border-color:rgba(255,255,255,.25);color:#e4e4f0;}
+/* file card IPFS badge */
+.bipfs{background:rgba(16,185,129,.12);color:#059669;border-radius:7px;
+  font-size:10px;font-weight:700;padding:5px 0;cursor:pointer;}
+.bipfs:hover{background:rgba(16,185,129,.22);}
+.fc-ipfs-badge{display:inline-flex;align-items:center;gap:3px;
+  background:rgba(16,185,129,.1);color:#34d399;border:1px solid rgba(16,185,129,.25);
+  font-size:9px;font-weight:800;padding:2px 8px;border-radius:99px;
+  letter-spacing:1px;margin-top:4px;cursor:pointer;}
+
+/* ── IPFS pinned badge on blockchain cards ── */
+.fc-ipfs-pinned-badge{display:inline-flex;align-items:center;gap:4px;
+  background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;
+  font-size:9px;font-weight:800;padding:3px 9px;border-radius:99px;
+  letter-spacing:1px;margin:4px auto 0;}
+
+/* ── Security flow: on-chain required before IPFS ── */
+/* chained card gets a subtle purple glow */
+.fc-chained{border:2px solid #7c3aed!important;background:linear-gradient(160deg,#faf5ff,#fff)!important;}
+/* status row */
+.fc-status-row{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;margin:5px 0 2px;}
+.fstatus{font-size:9px;font-weight:800;letter-spacing:.8px;padding:2px 8px;
+  border-radius:99px;display:inline-flex;align-items:center;gap:3px;}
+.fstatus-chain{background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;}
+.fstatus-pending{background:#f9fafb;color:#9ca3af;border:1px solid #e5e7eb;}
+.fstatus-ipfs{background:#ecfdf5;color:#059669;border:1px solid #a7f3d0;cursor:pointer;}
+.fstatus-ipfs:hover{background:#d1fae5;}
+/* locked IPFS button */
+.bipfs-locked{flex:1;padding:5px 0;border:none;border-radius:7px;
+  font-size:11px;font-weight:700;cursor:not-allowed;
+  background:#f3f4f6;color:#9ca3af;}
+.bipfs-locked:hover{background:#fef2f2;color:#ef4444;}
+/* flow hint */
+.fc-flow-hint{font-size:10px;color:#9ca3af;margin-top:5px;
+  font-weight:600;letter-spacing:.5px;}
+</style>
+</head>
+<body>
+<canvas id="bgC" style="opacity:0;"></canvas><!-- particles hidden in vault -->
+
+<div id="vault">
+  <nav class="vnav">
+    <div class="nlogo">CHV<span>·</span>Guard</div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="avt" id="uAvt">?</div>
+      <span id="uName" style="font-weight:600;font-size:14px;">—</span>
+    </div>
+    <button class="lout" onclick="doLogout()">⏏ Logout</button>
+  </nav>
+  <div class="vbody">
+    <main class="vmain">
+      <h2 style="font-size:19px;font-weight:700;letter-spacing:-.3px;margin-bottom:3px;">
+        Your Secure Vault</h2>
+      <p style="font-size:13px;color:#888;margin-bottom:18px;">
+        Upload files → Commit to blockchain for immutability → Then pin to IPFS for decentralised public access.</p>
+      <div class="sgrid">
+        <div class="sc"><div class="slbl">My Files</div><div class="sval p" id="sTF">0</div></div>
+        <div class="sc"><div class="slbl">On-Chain</div><div class="sval b" id="sBC">0</div></div>
+        <div class="sc"><div class="slbl">Images</div><div class="sval g" id="sIM">0</div></div>
+        <div class="sc"><div class="slbl">Size MB</div><div class="sval" id="sSZ">0.00</div></div>
+      </div>
+      <div class="tabs">
+        <button class="tab on" id="tabF" onclick="switchTab('files')">📁 My Files</button>
+        <button class="tab" id="tabC" onclick="switchTab('chain')">⛓ Blockchain</button>
+      </div>
+      <!-- Files pane -->
+      <div id="pFiles">
+        <div class="uzone" onclick="openUpModal()">
+          <div style="font-size:26px;">⬆</div>
+          <p style="font-weight:600;font-size:14px;color:#666;margin-top:6px;">
+            Click to upload files</p>
+          <p style="font-size:12px;color:#aaa;margin-top:3px;">
+            After uploading, use ⛓ Commit to lock it on blockchain — then go to the Blockchain tab to pin to IPFS</p>
+        </div>
+        <div class="fbar">
+          <button class="fbtn on" onclick="setFilt('all',this)">All</button>
+          <button class="fbtn" onclick="setFilt('image',this)">🖼 Images</button>
+          <button class="fbtn" onclick="setFilt('video',this)">🎬 Videos</button>
+          <button class="fbtn" onclick="setFilt('audio',this)">🎵 Audio</button>
+          <button class="fbtn" onclick="setFilt('document',this)">📄 Docs</button>
+          <input class="srch" placeholder="🔍 Search…" oninput="onSrch(this.value)">
+        </div>
+        <div id="fGrid" class="fgrid"></div>
+      </div>
+      <!-- Chain pane -->
+      <div id="pChain" class="hidden">
+        <div style="background:#fff;border-radius:12px;padding:14px;
+          margin-bottom:16px;border:1px solid #f0f0f5;">
+          <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:3px;">
+            🔗 Real Proof-of-Work Blockchain</div>
+          <div style="font-size:12px;color:#888;">
+            SHA-256 · Difficulty 4 leading zeros · Immutable once committed</div>
+          <div id="chainBadge" style="margin-top:7px;display:inline-flex;
+            align-items:center;gap:5px;background:#ecfdf5;color:#059669;
+            font-size:12px;font-weight:700;padding:4px 11px;border-radius:99px;">
+            ✓ Chain Valid</div>
+        </div>
+        <div id="cGrid" class="fgrid"></div>
+      </div>
+    </main>
+
+    <aside class="vaside">
+      <div>
+        <div class="hlbl">Security Hub · Live CHV</div>
+        <div class="cambox">
+          <video id="mCam" autoplay muted playsinline></video>
+          <div class="livebadge">● LIVE</div>
+        </div>
+      </div>
+      <div class="tp">
+        <div class="th"><span>Trust Score</span><span id="tScore">100%</span></div>
+        <div class="tbar"><div class="tfill" id="tFill"
+          style="width:100%;background:#10b981;"></div></div>
+        <div class="mst" style="margin-top:6px;">
+          <div class="sdot" style="background:#a78bfa;"></div>
+          <span id="faceStatusLbl" style="font-size:12px;font-weight:600;">👤 Face: Initialising…</span>
+        </div>
+        <div class="mst">
+          <div class="sdot" id="mDot" style="background:#10b981;"></div>
+          <span id="mLbl" style="font-size:12px;font-weight:600;">Mouse: STABLE</span>
+        </div>
+        <canvas id="mChart"></canvas>
+      </div>
+      <p style="font-size:11px;color:#aaa;line-height:1.65;">
+        <strong style="color:#a78bfa;">Face:</strong> Owner match: +15. Absent: −5. Intruder: −15.<br>
+        3× intruder in a row → instant lockout.<br>
+        <strong style="color:#a78bfa;">Mouse:</strong> Idle ≥5s: −2.5. Anomaly: −3.<br>
+        Both fail together → combo penalty.<br>
+        Below 40% locks vault immediately.
+      </p>
+      <div>
+        <div class="hlbl">Recent Blocks</div>
+        <div id="cSt" class="cst ok">✓ Chain Valid</div>
+        <div id="cBlocks" style="display:flex;flex-direction:column;gap:6px;
+          max-height:250px;overflow-y:auto;"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div id="upModal" class="hidden">
+  <div class="um">
+    <h2>⬆ Upload Files</h2>
+    <p>Files go to your private vault — not on-chain</p>
+    <div class="um-drop" onclick="document.getElementById('fIn').click()">
+      <div style="font-size:28px;">📂</div>
+      <div style="font-size:14px;color:#666;margin-top:5px;font-weight:600;">
+        Browse or drop files</div>
+      <input id="fIn" type="file" class="hidden" multiple
+        onchange="previewFiles(this.files)">
+    </div>
+    <div id="umList"></div>
+    <button class="um-up" onclick="uploadFiles()">Upload to Vault</button>
+    <button class="um-cancel" onclick="closeUpModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- CAPTCHA -->
+<div class="cap-ov hidden" id="capOv">
+  <div class="cap-box">
+    <h2>🖱 Human Verification</h2>
+    <p>Click all 5 dots quickly</p>
+    <div class="cap-zone" id="capZone">
+      <div class="cap-dot" id="capDot"></div>
+      <div class="cap-cur" id="capCur"></div>
+    </div>
+    <div class="cprog" id="capProg"></div>
+    <div class="cap-st" id="capSt">Move mouse into box</div>
+  </div>
+</div>
+
+<!-- FILE PREVIEW -->
+<div id="pm" class="hidden">
+  <button class="mc" onclick="closePM()">✕ Close</button>
+  <div id="pmFn" class="mfn"></div>
+  <div id="pmBody" style="display:flex;justify-content:center;align-items:center;"></div>
+</div>
+
+<!-- BLOCKCHAIN HASH MODAL -->
+<div id="hashModal" class="hidden">
+  <div class="hm">
+    <h2>⛓ Block Details</h2>
+    <div id="hmBody"></div>
+    <button class="hclose"
+      onclick="document.getElementById('hashModal').classList.add('hidden')">
+      Close</button>
+  </div>
+</div>
+
+<!-- ══ IPFS UPLOAD MODAL ══ -->
+<div id="ipfsModal" class="hidden">
+  <div class="ipfs-wrap">
+    <h2>🪐 Upload to IPFS</h2>
+    <p class="isub">Step 3 of 3 — File is blockchain-verified and immutable. Now pin it to IPFS for decentralised access.</p>
+
+    <!-- Security flow breadcrumb -->
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:18px;flex-wrap:wrap;">
+      <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;">✓ 1. Uploaded</span>
+      <span style="font-size:11px;color:#9ca3af;">→</span>
+      <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;">✓ 2. On Blockchain</span>
+      <span style="font-size:11px;color:#9ca3af;">→</span>
+      <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;">3. IPFS Pin ◀ You are here</span>
+    </div>
+
+    <div class="ipfs-file-strip">
+      <div class="ifi" id="ipfsIco">📄</div>
+      <div>
+        <div class="ifn" id="ipfsFName">—</div>
+        <div class="ifs" id="ipfsFSize">—</div>
+      </div>
+    </div>
+
+    <div class="iptabs">
+      <button class="iptab on" id="iptLocal"  onclick="ipTab('local')">🖥 Local Node</button>
+      <button class="iptab"    id="iptPublic" onclick="ipTab('public')">🌐 Pinata Public</button>
+    </div>
+
+    <!-- LOCAL -->
+    <div class="ippane" id="ippLocal">
+      <div class="ipinfo">
+        📌 Uploads to your <strong>IPFS Desktop</strong> daemon running on
+        <code>localhost:5001</code>.<br>
+        File is pinned locally. No API key needed — just make sure IPFS Desktop is open.
+      </div>
+      <button class="ipup" id="btnLocal" onclick="doIPFSLocal()">⬆ Upload to Local IPFS Node</button>
+    </div>
+
+    <!-- PUBLIC / PINATA -->
+    <div class="ippane hidden" id="ippPublic">
+
+      <!-- Option A: JWT -->
+      <div class="ipf">
+        <label>JWT Secret Token</label>
+        <input type="password" id="piJWT"
+          placeholder="eyJhbGciOiJIUzI1NiIs…  (from Pinata → API Keys)">
+      </div>
+
+      <div class="ip-or">── OR ──</div>
+
+      <!-- Option B: API Key + Secret -->
+      <div class="ipf">
+        <label>API Key</label>
+        <input type="text" id="piKey" placeholder="Pinata API Key">
+      </div>
+      <div class="ipf">
+        <label>API Secret</label>
+        <input type="password" id="piSecret" placeholder="Pinata API Secret">
+      </div>
+
+      <div class="ipinfo">
+        🔑 Get your keys at <strong>app.pinata.cloud → API Keys → + New Key</strong>.<br>
+        Enable <code>pinFileToIPFS</code> permission. You can use <strong>JWT</strong> alone,
+        or <strong>API Key + Secret</strong> — both work.<br>
+        Your keys are <strong>never stored</strong> — only used for this upload request.
+      </div>
+
+      <button class="ipup" id="btnPublic" onclick="doIPFSPublic()">🌐 Pin to Pinata (Public IPFS)</button>
+    </div>
+
+    <!-- RESULT (shown after success) -->
+    <div id="ipfsResult" class="ipresult hidden">
+      <div class="ipresult-title">✓ Successfully Pinned to IPFS!</div>
+      <div class="ipresult-lbl">Content ID (CID)</div>
+      <div class="ipresult-cid" id="resCID">—</div>
+      <div class="ipresult-links" id="resLinks"></div>
+    </div>
+
+    <button class="ipcancel" onclick="closeIPFSModal()">✕ Close</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════ INIT ════
+const AU = sessionStorage.getItem('vaultUser') || '';
+if(!AU){ window.location.href='/'; }
+
+document.getElementById('uAvt').innerText = AU[0]?.toUpperCase()||'?';
+document.getElementById('uName').innerText = AU;
+
+// ════ UTILS ════
+function icon(t){return t==='image'?'🖼️':t==='video'?'🎬':t==='audio'?'🎵':'📄';}
+function fmt(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(2)+'MB';}
+function dType(mt){if(mt.startsWith('image'))return'image';if(mt.startsWith('video'))return'video';if(mt.startsWith('audio'))return'audio';return'document';}
+function toast(m,t='ok'){const el=document.getElementById('toast');
+  el.className='show'+(t==='err'?' err':'');el.innerText=(t==='err'?'✗  ':'✓  ')+m;
+  clearTimeout(el._t);el._t=setTimeout(()=>el.className='',2800);}
+
+// ════ TRUST ════
+let trust=100,vActive=true;
+let mouseEnabled=true,lastMT=Date.now(),mHist=[],mScH=[];
+let lastFaceStatus='unknown';
+
+function updateTrust(){
+  trust=Math.max(0,Math.min(100,trust));
+  document.getElementById('tFill').style.width=trust+'%';
+  document.getElementById('tFill').style.background=
+    trust>70?'#10b981':trust>40?'#f59e0b':'#ef4444';
+  document.getElementById('tScore').innerText=Math.floor(trust)+'%';
+  if(trust<40&&vActive){
+    vActive=false;
+    toast('Trust critical — vault locked','err');
+    setTimeout(()=>{sessionStorage.clear();location.href='/';},2200);
+  }
+}
+
+// ════ CHV: face check every 3s ════
+// OWNER ONLY POLICY:
+//   match        → +15 (owner confirmed)
+//   wrong_person → −15 (intruder detected — hard penalty, immediate warning)
+//   no_face      → −5  (owner absent)
+//   error        → −5  (camera/detection failure)
+// Face scoring is INDEPENDENT of mouse scoring — no overlapping task.
+let chvCam=null,consecutiveWrongPerson=0;
+navigator.mediaDevices.getUserMedia({video:true})
+.then(s=>{
+  chvCam=s;
+  document.getElementById('mCam').srcObject=s;
+  setInterval(async()=>{
+    if(!vActive)return;
+    const v=document.getElementById('mCam');
+    const cv=document.createElement('canvas');
+    cv.width=v.videoWidth||320;cv.height=v.videoHeight||240;
+    cv.getContext('2d').drawImage(v,0,0);
+    try{
+      const r=await fetch('/api/verify',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user:AU,image:cv.toDataURL('image/jpeg',.7)})});
+      const d=await r.json();
+      if(d.status==='match'){
+        // Owner face confirmed — restore trust
+        trust=Math.min(100,trust+15);
+        lastFaceStatus='match';
+        consecutiveWrongPerson=0;
+        document.getElementById('faceStatusLbl').innerText='👤 Face: OWNER ✓';
+        document.getElementById('faceStatusLbl').style.color='#10b981';
+      } else if(d.status==='wrong_person'){
+        // Intruder detected — severe penalty
+        trust=Math.max(0,trust-15);
+        lastFaceStatus='intruder';
+        consecutiveWrongPerson++;
+        document.getElementById('faceStatusLbl').innerText='⛔ Face: INTRUDER DETECTED';
+        document.getElementById('faceStatusLbl').style.color='#ef4444';
+        toast('⚠ Unrecognised face detected!','err');
+        // 3 consecutive wrong-person readings → immediate lockout
+        if(consecutiveWrongPerson>=3){
+          vActive=false;
+          trust=0;updateTrust();
+          toast('⛔ Security breach — vault locked','err');
+          setTimeout(()=>{sessionStorage.clear();location.href='/';},1800);
+          return;
+        }
+      } else if(d.status==='no_face'){
+        // Owner left camera view
+        trust=Math.max(0,trust-5);
+        lastFaceStatus='absent';
+        consecutiveWrongPerson=0;
+        document.getElementById('faceStatusLbl').innerText='👁 Face: ABSENT −5';
+        document.getElementById('faceStatusLbl').style.color='#f59e0b';
+      } else {
+        trust=Math.max(0,trust-5);
+        lastFaceStatus='unknown';
+        document.getElementById('faceStatusLbl').innerText='👁 Face: UNVERIFIED −5';
+        document.getElementById('faceStatusLbl').style.color='#f59e0b';
+      }
+    }catch{
+      trust=Math.max(0,trust-5);
+      lastFaceStatus='error';
+    }
+    updateTrust();
+  },3000);
+}).catch(()=>{});
+
+// ════ MOUSE TRACKING ════
+// Mouse scoring is INDEPENDENT of face scoring.
+// Penalties fire only from mouse checks — no overlap with face timer.
+// However: if face is absent/intruder AND mouse is also idle/anomaly → combined penalty
+document.addEventListener('mousemove',e=>{
+  if(!vActive||!mouseEnabled)return;
+  mHist.push({x:e.clientX,y:e.clientY,t:Date.now()});
+  lastMT=Date.now();
+  const cut=Date.now()-3000;mHist=mHist.filter(p=>p.t>cut);
+  document.getElementById('mLbl').innerText='Mouse: ACTIVE';
+  document.getElementById('mDot').style.background='#10b981';
+});
+
+function buildProf(traj){
+  const sp=[],rh=[];
+  for(let i=1;i<traj.length;i++){
+    const dx=traj[i].x-traj[i-1].x,dy=traj[i].y-traj[i-1].y,dt=(traj[i].t-traj[i-1].t)||1;
+    sp.push(Math.sqrt(dx*dx+dy*dy)/dt);rh.push(dt);
+  }
+  const avg=a=>a.reduce((s,v)=>s+v,0)/a.length;
+  const std=a=>{const m=avg(a);return Math.sqrt(avg(a.map(x=>(x-m)**2)));};
+  return{avgSpeed:avg(sp),stdSpeed:std(sp),avgRhythm:avg(rh),stdRhythm:std(rh)};
+}
+
+setInterval(async()=>{
+  if(!vActive)return;
+  if(!mouseEnabled){lastMT=Date.now();return;}
+  const idle=(Date.now()-lastMT)/1000;
+
+  // ── MOUSE IDLE CHECK (independent, fires every 5s of idle) ──
+  if(idle>=5){
+    // If face is also absent/intruder at same time → double penalty (combo)
+    const comboFail=(lastFaceStatus==='absent'||lastFaceStatus==='intruder'||lastFaceStatus==='unknown');
+    if(comboFail){
+      trust=Math.max(0,trust-5);  // combo: face absent + mouse idle = −5 (not double-counted, just larger)
+      document.getElementById('mLbl').innerText=`Mouse: IDLE+FACELESS ${Math.floor(idle)}s`;
+      document.getElementById('mDot').style.background='#ef4444';
+    } else {
+      trust=Math.max(0,trust-2.5);  // mouse idle only −2.5
+      document.getElementById('mLbl').innerText=`Mouse: IDLE ${Math.floor(idle)}s`;
+      document.getElementById('mDot').style.background='#f59e0b';
+    }
+    updateTrust();
+  }
+
+  // ── MOUSE ANOMALY CHECK (independent) ──
+  // Only fires if enough data and mouse IS moving (not idle)
+  if(mHist.length>20&&idle<5){
+    const lp=buildProf(mHist.map(p=>({x:p.x,y:p.y,t:p.t-(mHist[0]?.t||0)})));
+    try{
+      const r=await fetch('/api/get_mouse_baseline',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user:AU})});
+      const d=await r.json();
+      if(d.baseline?.avgSpeed){
+        const b=d.baseline;
+        const sr=Math.min(b.avgSpeed,lp.avgSpeed)/Math.max(b.avgSpeed,lp.avgSpeed)||1;
+        const rr=Math.min(b.avgRhythm,lp.avgRhythm)/Math.max(b.avgRhythm,lp.avgRhythm)||1;
+        const score=(sr+rr)/2;
+        if(score<0.3){
+          // Suspicious movement pattern — doesn't match owner's baseline
+          // If face is ALSO not matching → combo penalty
+          const faceAlsoBad=(lastFaceStatus!=='match');
+          if(faceAlsoBad){
+            trust=Math.max(0,trust-6);  // suspicious mouse + face not owner = −6
+            document.getElementById('mLbl').innerText='Mouse: SUSPICIOUS+NO_OWNER';
+            document.getElementById('mDot').style.background='#ef4444';
+            toast('⚠ Suspicious behaviour — unrecognised user pattern','err');
+          } else {
+            trust=Math.max(0,trust-3);  // anomalous mouse, face ok = −3
+            document.getElementById('mLbl').innerText='Mouse: ANOMALY';
+            document.getElementById('mDot').style.background='#ef4444';
+          }
+          updateTrust();
+        } else if(score>=0.65&&lastFaceStatus==='match'){
+          // Mouse matches owner AND face matches → slight recovery
+          document.getElementById('mLbl').innerText='Mouse: OWNER PATTERN ✓';
+          document.getElementById('mDot').style.background='#10b981';
+        }
+      }
+    }catch{}
+  }
+
+  mScH.push(idle<5?1:0);if(mScH.length>20)mScH.shift();
+  const cv=document.getElementById('mChart');
+  if(cv){cv.width=cv.offsetWidth||240;cv.height=33;
+    const ctx=cv.getContext('2d'),w=cv.width/20;
+    ctx.clearRect(0,0,cv.width,cv.height);
+    mScH.forEach((v,i)=>{ctx.fillStyle=v?'#10b981':'#ef4444';
+      ctx.fillRect(i*w,2,w-2,26);});}
+},5000);
+
+// ════ CAPTCHA ════
+let capCl=0,capTimes=[],capSt2=Date.now();
+setTimeout(showCap,90000);
+function showCap(){
+  if(!vActive)return;
+  capCl=0;capTimes=[];capSt2=Date.now();
+  document.getElementById('capOv').classList.remove('hidden');
+  document.getElementById('capProg').innerHTML='<div class="cdot"></div>'.repeat(5);
+  const z=document.getElementById('capZone');
+  z.onmousemove=e=>{const r=z.getBoundingClientRect();
+    const c=document.getElementById('capCur');
+    c.style.left=(e.clientX-r.left)+'px';c.style.top=(e.clientY-r.top)+'px';};
+  moveCap();document.getElementById('capSt').innerText='Click all dots!';
+}
+function moveCap(){
+  const z=document.getElementById('capZone'),d=document.getElementById('capDot');
+  d.style.left=Math.random()*(z.offsetWidth-32)+'px';
+  d.style.top=Math.random()*(z.offsetHeight-32)+'px';
+  d.style.display='block';d.onclick=capClick;
+}
+function capClick(){
+  capTimes.push(Date.now()-capSt2);capCl++;
+  document.querySelectorAll('.cdot')[capCl-1]?.classList.add('done');
+  if(capCl>=5){
+    document.getElementById('capDot').style.display='none';
+    const ivs=capTimes.map((t,i)=>i>0?t-capTimes[i-1]:t);
+    const avg=ivs.reduce((a,b)=>a+b,0)/ivs.length;
+    const vr=ivs.reduce((s,t)=>s+(t-avg)**2,0)/ivs.length;
+    const bot=avg<200||vr<50||capTimes.at(-1)>15000;
+    document.getElementById('capSt').innerText=bot?'⚠ Suspicious':'✓ Human verified!';
+    document.getElementById('capSt').style.color=bot?'#ef4444':'#10b981';
+    if(bot)trust=Math.max(0,trust-15);
+    // NO trust increase on captcha pass — only face/voice give +15
+    updateTrust();
+    setTimeout(()=>{document.getElementById('capOv').classList.add('hidden');
+      setTimeout(showCap,90000);},1500);
+  } else moveCap();
+}
+
+// ════ UPLOAD MODAL ════
+let pendingFiles=[];
+function openUpModal(){
+  mouseEnabled=false;lastMT=Date.now();
+  document.getElementById('umList').innerHTML='';pendingFiles=[];
+  document.getElementById('upModal').classList.remove('hidden');
+}
+function closeUpModal(){
+  document.getElementById('upModal').classList.add('hidden');
+  mouseEnabled=true;lastMT=Date.now();
+}
+function previewFiles(files){
+  pendingFiles=Array.from(files);
+  document.getElementById('umList').innerHTML=pendingFiles.map(f=>`
+    <div class="umrow">
+      <span>${icon(dType(f.type))}</span>
+      <span>${f.name}</span>
+      <span style="color:#aaa;font-size:11px;">${fmt(f.size)}</span>
+    </div>`).join('');
+}
+async function uploadFiles(){
+  if(!pendingFiles.length){toast('No files selected','err');return;}
+  for(const f of pendingFiles){
+    await new Promise(res=>{
+      const rd=new FileReader();
+      rd.onload=async e=>{
+        await fetch('/api/upload',{method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({user:AU,name:f.name,size:f.size,
+            ftype:dType(f.type),content:e.target.result})});
+        res();
+      };rd.readAsDataURL(f);
+    });
+  }
+  closeUpModal();loadFiles();loadChain();
+  toast(`${pendingFiles.length} file(s) uploaded ✓`);
+}
+
+// ════ TABS ════
+let curTab='files';
+function switchTab(t){
+  curTab=t;
+  document.getElementById('pFiles').classList.toggle('hidden',t!=='files');
+  document.getElementById('pChain').classList.toggle('hidden',t!=='chain');
+  document.getElementById('tabF').classList.toggle('on',t==='files');
+  document.getElementById('tabC').classList.toggle('on',t==='chain');
+  if(t==='chain')loadChain();else loadFiles();
+}
+
+// ════ FILES ════
+let allFiles=[],filt='all',srchQ='';
+function setFilt(f,btn){filt=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');renderFiles();}
+function onSrch(q){srchQ=q.toLowerCase();renderFiles();}
+
+async function loadFiles(){
+  const r=await fetch('/api/files?user='+AU);
+  const d=await r.json();allFiles=d.files||[];
+  updateStats();renderFiles();
+}
+function renderFiles(){
+  let fs=allFiles;
+  if(filt!=='all')fs=fs.filter(f=>f.ftype===filt);
+  if(srchQ)fs=fs.filter(f=>f.name.toLowerCase().includes(srchQ));
+  const g=document.getElementById('fGrid');
+  if(!fs.length){g.innerHTML='<div class="empty">🗃️<br>No files yet</div>';return;}
+  g.innerHTML=fs.map(f=>{
+    const onChain=chainedFileNames.has(f.name);
+    return `
+    <div class="fc${onChain?' fc-chained':''}">
+      <div class="fi">${icon(f.ftype)}</div>
+      <div class="fn2" title="${f.name}">${f.name}</div>
+      <div class="fm">${fmt(f.size)}</div>
+      ${onChain
+        ?`<span class="fstatus fstatus-chain">⛓ On Blockchain</span>`
+        :`<span class="fstatus fstatus-pending">○ Not on-chain yet</span>`}
+      <div class="fa">
+        <button class="bsm bv" onclick="viewFile(${f.id})">👁 View</button>
+        ${onChain
+          ?`<button class="bsm bch" disabled style="opacity:.35;cursor:not-allowed;">⛓ Done</button>`
+          :`<button class="bsm bch" onclick="commitChain(${f.id})">⛓ Commit</button>`}
+        <button class="bsm bd" onclick="delFile(${f.id})">🗑</button>
+      </div>
+    </div>`}).join('');
+}
+function viewFile(id){
+  const f=allFiles.find(x=>x.id===id);if(!f)return;
+  document.getElementById('pmFn').innerText=f.name+' · '+fmt(f.size);
+  const b=document.getElementById('pmBody');
+  b.innerHTML=f.ftype==='image'
+    ?`<img src="${f.content}" style="max-width:90vw;max-height:75vh;border-radius:11px;">`
+    :f.ftype==='video'
+    ?`<video src="${f.content}" controls autoplay style="max-width:90vw;max-height:75vh;border-radius:11px;"></video>`
+    :f.ftype==='audio'
+    ?`<audio src="${f.content}" controls autoplay style="margin-top:20px;"></audio>`
+    :`<div style="color:#fff;text-align:center;padding:20px;">
+        <div style="font-size:42px;margin-bottom:12px;">📄</div>
+        <a href="${f.content}" download="${f.name}"
+          style="color:#a78bfa;font-weight:700;text-decoration:none;">⬇ Download</a>
+      </div>`;
+  document.getElementById('pm').classList.remove('hidden');
+}
+async function delFile(id){
+  if(!confirm('Delete this file?'))return;
+  await fetch('/api/delete_file',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id,user:AU})});
+  loadFiles();toast('File deleted');
+}
+function closePM(){document.getElementById('pm').classList.add('hidden');}
+document.getElementById('pm').addEventListener('click',function(e){if(e.target===this)closePM();});
+
+// ════ BLOCKCHAIN ════
+let chainedFileNames = new Set(); // tracks which file names are on-chain for this user
+
+async function commitChain(id){
+  if(!confirm('Commit to blockchain? File becomes IMMUTABLE — cannot be deleted or changed.'))return;
+  toast('⛏ Mining block… please wait');
+  const r=await fetch('/api/mine',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({user:AU,file_id:id})});
+  const d=await r.json();
+  if(d.status==='ok'){
+    toast(`Block #${d.block.idx} mined (nonce ${d.block.proof})`);
+    loadFiles();loadChain();switchTab('chain');
+  } else toast('Mining failed: '+(d.msg||'error'),'err');
+}
+
+async function loadChain(){
+  // always refresh allFiles so ipfs_cid cross-reference is current
+  const fr=await fetch('/api/files?user='+AU);
+  const fd=await fr.json(); allFiles=fd.files||[];
+  const r=await fetch('/api/chain');const d=await r.json();
+  const chain=d.chain||[];const valid=d.valid;
+
+  document.getElementById('cSt').className='cst '+(valid?'ok':'err');
+  document.getElementById('cSt').innerText=valid?'✓ Chain Valid':'✗ Chain Invalid!';
+  document.getElementById('chainBadge').style.background=valid?'#ecfdf5':'#fef2f2';
+  document.getElementById('chainBadge').style.color=valid?'#059669':'#dc2626';
+  document.getElementById('chainBadge').innerText=valid?'✓ Chain Valid':'✗ Invalid!';
+
+  document.getElementById('cBlocks').innerHTML=chain.slice(-5).reverse().map(b=>`
+    <div class="cblock">
+      <span style="font-weight:700;color:#333;">Block #${b.idx}</span>
+      <span class="ch">${b.block_hash.substring(0,26)}…</span>
+      <span style="color:#aaa;font-size:9px;">
+        ${b.owner} · ${b.file_name} · nonce:${b.proof}</span>
+    </div>`).join('');
+
+  const mine=chain.filter(b=>b.owner===AU);
+
+  // update the set of on-chain file names so renderFiles() can use it
+  chainedFileNames = new Set(mine.map(b=>b.file_name));
+  // re-render files panel so IPFS buttons update live
+  renderFiles();
+  const g=document.getElementById('cGrid');
+  if(!mine.length){
+    g.innerHTML='<div class="empty">No files committed to blockchain yet.<br>Use the ⛓ button on any file.</div>';
+  } else {
+    g.innerHTML=mine.map(b=>{
+    // look up ipfs_cid from allFiles for this block's file
+    const fdata = allFiles.find(x=>x.name===b.file_name && x.owner===b.owner) ||
+                  allFiles.find(x=>x.name===b.file_name);
+    const pinned = fdata && fdata.ipfs_cid;
+    return `
+      <div class="fc imm">
+        <div class="fi">${icon(b.file_type)}</div>
+        <div class="ibadge">⛓ BLOCK #${b.idx}</div>
+        <div class="fn2" style="margin-top:6px;" title="${b.file_name}">${b.file_name}</div>
+        <div class="fm">${fmt(b.file_size)} · nonce:${b.proof}</div>
+        <div class="fhash">${b.block_hash}</div>
+        ${pinned
+          ? `<div class="fc-ipfs-pinned-badge">🪐 IPFS Pinned</div>`
+          : ''}
+        <div class="fa" style="margin-top:9px;">
+          <button class="bsm bv" onclick="showHash(${b.idx})">🔍 Full Details</button>
+          ${pinned
+            ? `<button class="bsm bipfs" onclick="openIPFSModal(${fdata.id})" title="View IPFS links">🪐 Links</button>`
+            : `<button class="bsm bipfs" onclick="openIPFSFromChain('${b.file_name}',${b.idx})" title="Pin this file to IPFS">🪐 IPFS</button>`}
+        </div>
+      </div>`;
+  }).join('');
+  }
+  // update on-chain count in stats
+  document.getElementById('sBC').innerText=mine.length;
+}
+
+function showHash(idx){
+  fetch('/api/chain').then(r=>r.json()).then(d=>{
+    const b=d.chain.find(x=>x.idx===idx);if(!b)return;
+    document.getElementById('hmBody').innerHTML=`
+      <div class="hrow"><div class="hlb">Block Index</div>
+        <div class="hval">#${b.idx}</div></div>
+      <div class="hrow"><div class="hlb">Block Hash (SHA-256)</div>
+        <div class="hval">${b.block_hash}</div></div>
+      <div class="hrow"><div class="hlb">Previous Block Hash</div>
+        <div class="hval">${b.prev_hash}</div></div>
+      <div class="hrow"><div class="hlb">File Hash (SHA-256)</div>
+        <div class="hval">${b.file_hash}</div></div>
+      <div class="hrow"><div class="hlb">File Name</div>
+        <div class="hval">${b.file_name}</div></div>
+      <div class="hrow"><div class="hlb">Owner</div>
+        <div class="hval">${b.owner}</div></div>
+      <div class="hrow"><div class="hlb">Proof of Work (nonce)</div>
+        <div class="hval">${b.proof}</div></div>
+      <div class="hrow"><div class="hlb">Timestamp</div>
+        <div class="hval">${new Date(b.timestamp*1000).toLocaleString()}</div></div>`;
+    document.getElementById('hashModal').classList.remove('hidden');
+  });
+}
+
+async function updateStats(){
+  let imgs=0,sz=0;
+  allFiles.forEach(f=>{sz+=f.size;if(f.ftype==='image')imgs++;});
+  document.getElementById('sTF').innerText=allFiles.length;
+  document.getElementById('sIM').innerText=imgs;
+  document.getElementById('sSZ').innerText=(sz/1048576).toFixed(2);
+}
+
+function doLogout(){
+  vActive=false;
+  if(chvCam)chvCam.getTracks().forEach(t=>t.stop());
+  sessionStorage.clear();
+  window.location.href='/';
+}
+
+// ════ INIT VAULT ════
+loadFiles();loadChain();
+toast(`Welcome back, ${AU}! Vault unlocked.`);
+
+// ════════════════════════════════════════
+//  IPFS
+// ════════════════════════════════════════
+let _ipfsFileId = null;
+
+// Open IPFS modal from the blockchain tab (loads file list first if needed)
+async function openIPFSFromChain(fileName, blockIdx){
+  // ensure allFiles is fresh so we can look up the file id
+  if(!allFiles.length){
+    const r = await fetch('/api/files?user='+AU);
+    const d = await r.json();
+    allFiles = d.files||[];
+  }
+  const f = allFiles.find(x=>x.name===fileName);
+  if(!f){
+    toast('File record not found — it may have been deleted from vault', 'err');
+    return;
+  }
+  openIPFSModal(f.id);
+}
+
+function warnNotChained(){
+  toast('⛓ Commit to blockchain first — then you can pin to IPFS', 'err');
+}
+
+function openIPFSModal(fileId){
+  _ipfsFileId = fileId;
+  const f = allFiles.find(x=>x.id===fileId);
+  if(!f) return;
+
+  // Security gate — must be on blockchain before IPFS
+  if(!chainedFileNames.has(f.name)){
+    toast('⛓ Commit this file to blockchain first, then pin to IPFS', 'err');
+    return;
+  }
+
+  // populate file strip
+  document.getElementById('ipfsIco').innerText   = icon(f.ftype);
+  document.getElementById('ipfsFName').innerText = f.name;
+  document.getElementById('ipfsFSize').innerText = fmt(f.size);
+
+  // reset result
+  document.getElementById('ipfsResult').classList.add('hidden');
+  document.getElementById('resCID').innerText    = '—';
+  document.getElementById('resLinks').innerHTML  = '';
+
+  // if already pinned, show CID immediately
+  if(f.ipfs_cid){
+    _showIPFSResult(f.ipfs_cid,
+      `http://localhost:8080/ipfs/${f.ipfs_cid}`,
+      `https://gateway.pinata.cloud/ipfs/${f.ipfs_cid}`,
+      `https://ipfs.io/ipfs/${f.ipfs_cid}`,
+      true);
+  }
+
+  mouseEnabled = false; lastMT = Date.now();
+  document.getElementById('ipfsModal').classList.remove('hidden');
+  ipTab('local');
+}
+
+function closeIPFSModal(){
+  document.getElementById('ipfsModal').classList.add('hidden');
+  mouseEnabled = true; lastMT = Date.now();
+}
+
+function ipTab(t){
+  document.getElementById('ippLocal').classList.toggle('hidden',  t!=='local');
+  document.getElementById('ippPublic').classList.toggle('hidden', t!=='public');
+  document.getElementById('iptLocal').classList.toggle('on',  t==='local');
+  document.getElementById('iptPublic').classList.toggle('on', t==='public');
+}
+
+// ── Local node upload ──
+async function doIPFSLocal(){
+  const btn = document.getElementById('btnLocal');
+  btn.disabled = true; btn.innerText = '⏳ Connecting to IPFS Desktop…';
+  try{
+    const r = await fetch('/api/ipfs/upload_local',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({user: AU, file_id: _ipfsFileId})
+    });
+    const d = await r.json();
+    if(d.status==='ok'){
+      const f = allFiles.find(x=>x.id===_ipfsFileId);
+      if(f) f.ipfs_cid = d.cid;
+      renderFiles();
+      _showIPFSResult(d.cid, d.local_url, null, d.public_url);
+      toast('🪐 Pinned to local IPFS node!');
+    } else {
+      toast('IPFS error: '+(d.msg||'Unknown error'), 'err');
+    }
+  }catch(e){ toast('Request failed: '+e.message,'err'); }
+  btn.disabled = false; btn.innerText = '⬆ Upload to Local IPFS Node';
+}
+
+// ── Pinata public upload ──
+async function doIPFSPublic(){
+  const jwt    = document.getElementById('piJWT').value.trim();
+  const apiKey = document.getElementById('piKey').value.trim();
+  const apiSec = document.getElementById('piSecret').value.trim();
+
+  if(!jwt && !(apiKey && apiSec)){
+    toast('Enter your JWT token — OR — both API Key and API Secret','err');
+    return;
+  }
+
+  const btn = document.getElementById('btnPublic');
+  btn.disabled = true; btn.innerText = '⏳ Pinning to Pinata…';
+  try{
+    const r = await fetch('/api/ipfs/upload_public',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        user: AU, file_id: _ipfsFileId,
+        jwt: jwt, api_key: apiKey, api_secret: apiSec
+      })
+    });
+    const d = await r.json();
+    if(d.status==='ok'){
+      const f = allFiles.find(x=>x.id===_ipfsFileId);
+      if(f) f.ipfs_cid = d.cid;
+      renderFiles();
+      _showIPFSResult(d.cid, null, d.gateway_url, d.ipfs_io);
+      toast('🌐 Pinned publicly on Pinata!');
+    } else {
+      toast('Pinata error: '+(d.msg||'Unknown error'),'err');
+    }
+  }catch(e){ toast('Request failed: '+e.message,'err'); }
+  btn.disabled = false; btn.innerText = '🌐 Pin to Pinata (Public IPFS)';
+}
+
+// ── Show result block ──
+function _showIPFSResult(cid, localUrl, pinataUrl, ipfsIoUrl, alreadyPinned=false){
+  document.getElementById('resCID').innerText = cid;
+  const links = [];
+  if(localUrl)  links.push(`<a href="${localUrl}"  target="_blank">🖥 Open via Local Gateway (port 8080)</a>`);
+  if(pinataUrl) links.push(`<a href="${pinataUrl}" target="_blank">🌐 Open via Pinata Gateway</a>`);
+  if(ipfsIoUrl) links.push(`<a href="${ipfsIoUrl}" target="_blank">🌍 Open via ipfs.io</a>`);
+  document.getElementById('resLinks').innerHTML = links.join('');
+
+  const res = document.getElementById('ipfsResult');
+  res.classList.remove('hidden');
+  res.querySelector('.ipresult-title').innerText =
+    alreadyPinned ? '✓ Already Pinned to IPFS' : '✓ Successfully Pinned to IPFS!';
+}
+
+</script>
+</body>
+</html>

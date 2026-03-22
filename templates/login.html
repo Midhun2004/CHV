@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>CHV-Guard · Login</title>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --a:#7c3aed;--a2:#0ea5e9;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;
+  --bg:#0a0a0f;--surf:rgba(14,14,26,.85);--bord:rgba(255,255,255,.09);
+  --tx:#e4e4f0;--mt:#6b6b8a;
+  --fn:'Space Grotesk',sans-serif;--mo:'JetBrains Mono',monospace;
+}
+html,body{min-height:100%;font-family:var(--fn);background:var(--bg);color:var(--tx);overflow-x:hidden;}
+.hidden{display:none!important;}
+#bgC{position:fixed;inset:0;z-index:0;pointer-events:none;}
+.page{min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  align-items:center;padding:32px 16px;position:relative;z-index:5;}
+
+/* CARD */
+.card{width:min(480px,96vw);padding:42px 48px;border-radius:22px;
+  background:var(--surf);backdrop-filter:blur(26px);
+  border:1px solid var(--bord);
+  box-shadow:0 10px 48px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.06);
+  display:flex;flex-direction:column;align-items:center;
+  animation:su .42s cubic-bezier(.16,1,.3,1) both;}
+@keyframes su{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;
+  border-radius:99px;background:rgba(124,58,237,.15);
+  border:1px solid rgba(124,58,237,.35);
+  font-size:11px;font-weight:700;letter-spacing:2px;color:#a78bfa;
+  text-transform:uppercase;margin-bottom:16px;}
+.blink{width:7px;height:7px;background:var(--a);border-radius:50%;animation:bl 1.5s infinite;}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.2}}
+.card h1{font-size:clamp(22px,5vw,32px);font-weight:700;letter-spacing:-.5px;text-align:center;
+  background:linear-gradient(135deg,#fff 0%,#a78bfa 55%,#38bdf8 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;margin-bottom:6px;}
+.sub{font-size:13px;color:var(--mt);margin-bottom:22px;text-align:center;line-height:1.6;}
+
+/* INPUTS */
+.field{width:100%;margin-bottom:13px;}
+.field label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--mt);margin-bottom:6px;}
+.field input{width:100%;padding:12px 15px;background:rgba(255,255,255,.04);
+  border:1px solid var(--bord);border-radius:10px;color:var(--tx);
+  font-family:var(--fn);font-size:14px;outline:none;transition:.2s;}
+.field input:focus{border-color:var(--a);box-shadow:0 0 0 3px rgba(124,58,237,.18);}
+.field input::placeholder{color:var(--mt);}
+
+/* BUTTONS */
+.bp{width:100%;padding:13px;border:none;border-radius:11px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;
+  font-family:var(--fn);font-size:15px;font-weight:700;cursor:pointer;
+  transition:.2s;margin-top:8px;box-shadow:0 4px 24px rgba(124,58,237,.4);}
+.bp:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,58,237,.55);}
+.bp:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+.bg2{width:100%;padding:11px;border:1px solid var(--bord);border-radius:11px;
+  background:transparent;color:var(--mt);font-family:var(--fn);font-size:14px;
+  cursor:pointer;transition:.2s;margin-top:6px;}
+.bg2:hover{border-color:rgba(124,58,237,.4);color:var(--tx);background:rgba(124,58,237,.06);}
+
+/* ALERT */
+.ale{padding:9px 13px;border-radius:8px;font-size:13px;font-weight:500;margin-top:9px;width:100%;}
+.ale.e{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;}
+.ale.ok{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;}
+
+/* FACE SCAN */
+.scan-box{position:relative;width:240px;height:195px;border-radius:14px;overflow:hidden;
+  border:2px solid var(--a);box-shadow:0 0 28px rgba(124,58,237,.35);margin-top:10px;}
+.scan-box video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+.scan-ov{position:absolute;inset:0;border-radius:12px;
+  background:linear-gradient(0deg,rgba(124,58,237,.22),transparent 60%);}
+.scan-bar{width:100%;height:5px;background:rgba(255,255,255,.08);
+  border-radius:4px;margin-top:12px;overflow:hidden;}
+.scan-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--a),var(--a2));
+  border-radius:4px;transition:width .22s;}
+.reject-msg{font-size:13px;font-weight:700;color:#ef4444;margin-top:8px;text-align:center;}
+
+/* MOUSE CAL */
+.mzone{width:100%;max-width:420px;height:175px;
+  border:2px dashed rgba(124,58,237,.35);border-radius:13px;
+  position:relative;background:rgba(124,58,237,.04);
+  overflow:hidden;margin:14px auto 0;}
+.tdot{width:30px;height:30px;background:var(--ok);border-radius:50%;
+  position:absolute;cursor:pointer;display:none;
+  box-shadow:0 0 16px rgba(16,185,129,.8);}
+
+/* VOICE */
+.mring{position:relative;width:130px;height:130px;display:flex;
+  align-items:center;justify-content:center;margin:18px auto;cursor:pointer;}
+.mcore{width:60px;height:60px;border-radius:50%;
+  background:linear-gradient(145deg,#7c3aed,#0ea5e9);
+  display:flex;align-items:center;justify-content:center;font-size:22px;z-index:2;}
+.mring .ring{position:absolute;border-radius:50%;
+  border:2px solid rgba(124,58,237,.35);animation:vw 2.4s infinite;}
+.r1{width:85px;height:85px;}.r2{width:112px;height:112px;animation-delay:.6s;}
+@keyframes vw{0%{transform:scale(.8);opacity:.8}70%{transform:scale(1.2);opacity:0}100%{opacity:0}}
+.phrase-box{width:100%;background:rgba(124,58,237,.12);
+  border:1px solid rgba(124,58,237,.3);border-radius:10px;
+  padding:10px 15px;margin-bottom:12px;text-align:center;}
+.phrase-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:#a78bfa;margin-bottom:4px;}
+.phrase-txt{font-size:17px;font-weight:700;color:#fff;}
+
+/* TOAST */
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(70px);
+  background:#111;color:#fff;padding:11px 22px;border-radius:99px;
+  font-size:13px;font-weight:600;z-index:2000;opacity:0;
+  transition:.35s cubic-bezier(.16,1,.3,1);}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.err{background:#ef4444;}
+</style>
+
+<style>
+/* USER CARDS GRID */
+.user-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+  gap:12px;width:100%;margin-bottom:6px;}
+.ucard{background:rgba(124,58,237,.08);border:1.5px solid rgba(124,58,237,.25);
+  border-radius:14px;padding:18px 10px;display:flex;flex-direction:column;
+  align-items:center;cursor:pointer;transition:.22s;gap:8px;}
+.ucard:hover{background:rgba(124,58,237,.22);border-color:var(--a);
+  transform:translateY(-3px);box-shadow:0 8px 24px rgba(124,58,237,.3);}
+.ucard-av{width:48px;height:48px;border-radius:50%;
+  background:linear-gradient(135deg,#7c3aed,#0ea5e9);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:800;color:#fff;}
+.ucard-name{font-size:12px;font-weight:700;color:#e4e4f0;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;}
+.no-users{font-size:13px;color:var(--mt);text-align:center;padding:16px;width:100%;}
+
+/* STEP PANELS (hidden by default) */
+.step{width:100%;display:flex;flex-direction:column;align-items:center;}
+</style>
+</head>
+<body>
+<canvas id="bgC"></canvas>
+<div class="page">
+
+  <!-- STEP 0: PICK ACCOUNT -->
+  <div class="card" id="step0">
+    <div class="chip"><span class="blink"></span>CHV-Guard v6</div>
+    <h1>Secure Vault</h1>
+    <p class="sub">Select your account to begin biometric authentication</p>
+    <div id="userGrid" class="user-grid">
+      <div class="no-users">Loading accounts…</div>
+    </div>
+    <div id="s0Alert" class="hidden"></div>
+    <div style="width:100%;border-top:1px solid var(--bord);margin-top:16px;padding-top:16px;">
+      <a href="/register" style="display:block;text-align:center;font-size:13px;
+        color:var(--mt);text-decoration:none;transition:.2s;"
+        onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='var(--mt)'">
+        ＋ Create new account
+      </a>
+    </div>
+  </div>
+
+  <!-- STEP 1: FACE SCAN -->
+  <div class="card hidden" id="step1">
+    <div class="chip"><span class="blink"></span>Identity Verification</div>
+    <h1>Face Scan</h1>
+    <p class="sub" id="fSub">Look at the camera · Only <strong id="fUser"></strong> may enter</p>
+    <div class="scan-box">
+      <video id="vid" autoplay muted playsinline></video>
+      <div class="scan-ov"></div>
+    </div>
+    <div class="scan-bar"><div class="scan-fill" id="sFill"></div></div>
+    <p id="sSt" style="font-size:13px;color:var(--mt);margin-top:10px;">Initialising camera…</p>
+    <p id="sReject" class="reject-msg hidden"></p>
+    <button class="bg2" style="margin-top:14px;" onclick="cancelFace()">← Back</button>
+  </div>
+
+  <!-- STEP 2: VOICE VERIFY -->
+  <div class="card hidden" id="step2">
+    <div class="chip"><span class="blink"></span>Voice Verification</div>
+    <h1>Voice Authentication</h1>
+    <p class="sub">Click the mic and speak your registered passphrase</p>
+    <div class="mring" id="micBtn" onclick="startVoiceVerify()">
+      <div class="mcore">🎤</div>
+      <span class="ring r1"></span><span class="ring r2"></span>
+    </div>
+    <p id="vSt" style="font-size:13px;font-weight:600;color:var(--warn);margin-top:4px;text-align:center;">
+      Click mic to begin…</p>
+    <div id="vAttempts" style="font-size:11px;color:var(--mt);margin-top:6px;text-align:center;"></div>
+    <button class="bg2" style="margin-top:12px;" onclick="cancelVoice()">← Back</button>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+(()=>{
+  const c=document.getElementById('bgC'),ctx=c.getContext('2d');
+  let W,H,P=[];
+  const sz=()=>{W=c.width=innerWidth;H=c.height=innerHeight;};sz();
+  addEventListener('resize',sz);
+  for(let i=0;i<52;i++)P.push({
+    x:Math.random()*W,y:Math.random()*H,
+    vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,
+    r:Math.random()*1.4+.4});
+  (function draw(){
+    ctx.clearRect(0,0,W,H);
+    P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(124,58,237,.5)';ctx.fill();});
+    P.forEach((a,i)=>P.slice(i+1).forEach(b=>{
+      const d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(d<108){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+        ctx.strokeStyle=`rgba(124,58,237,${.09*(1-d/108)})`;
+        ctx.lineWidth=.4;ctx.stroke();}}));
+    requestAnimationFrame(draw);
+  })();
+})();
+function toast(m,t='ok'){
+  const el=document.getElementById('toast');
+  el.className='show'+(t==='err'?' err':'');
+  el.innerText=(t==='err'?'✗  ':'✓  ')+m;
+  clearTimeout(el._t);el._t=setTimeout(()=>el.className='',2800);
+}
+</script>
+
+<script>
+let AU='',cam=null,facePts=0,faceTimer=null;
+let voiceBusy=false,voiceAttempts=0;
+const MAX_VOICE_ATTEMPTS=3;
+
+// ── Load user cards ──
+async function loadUsers(){
+  const r=await fetch('/api/users');
+  const d=await r.json();
+  const grid=document.getElementById('userGrid');
+  if(!d.users||!d.users.length){
+    grid.innerHTML='<div class="no-users">No accounts yet.<br><a href="/register" style="color:#a78bfa;">Create one →</a></div>';
+    return;
+  }
+  grid.innerHTML=d.users.map(u=>`
+    <div class="ucard" onclick="selectUser('${u}')">
+      <div class="ucard-av">${u[0].toUpperCase()}</div>
+      <div class="ucard-name">${u}</div>
+    </div>`).join('');
+}
+loadUsers();
+
+function showOnly(id){
+  ['step0','step1','step2'].forEach(s=>document.getElementById(s).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+// ── User selected → open camera immediately ──
+function selectUser(u){
+  AU=u;
+  document.getElementById('fUser').innerText=u;
+  showOnly('step1');
+  startFaceScan();
+}
+
+function cancelFace(){
+  stopCam();showOnly('step0');
+}
+function cancelVoice(){
+  showOnly('step1');facePts=0;
+  document.getElementById('sFill').style.width='0%';
+  document.getElementById('sSt').innerText='Scanning…';
+  document.getElementById('sReject').classList.add('hidden');
+  startFaceScan();
+}
+
+// ── Camera ──
+function stopCam(){
+  if(cam){cam.getTracks().forEach(t=>t.stop());cam=null;}
+  if(faceTimer){clearInterval(faceTimer);faceTimer=null;}
+}
+
+function startFaceScan(){
+  stopCam();
+  facePts=0;
+  document.getElementById('sFill').style.width='0%';
+  document.getElementById('sSt').innerText='Starting camera…';
+  document.getElementById('sReject').classList.add('hidden');
+
+  navigator.mediaDevices.getUserMedia({video:true})
+  .then(s=>{
+    cam=s;
+    document.getElementById('vid').srcObject=s;
+    runFaceVerify();
+  })
+  .catch(()=>{
+    document.getElementById('sSt').innerText='⚠ Camera permission denied';
+  });
+}
+
+// ── Face verification loop ──
+function runFaceVerify(){
+  const NEED=6;
+  faceTimer=setInterval(async()=>{
+    const v=document.getElementById('vid');
+    const cv=document.createElement('canvas');
+    cv.width=v.videoWidth||320;cv.height=v.videoHeight||240;
+    cv.getContext('2d').drawImage(v,0,0);
+    try{
+      const r=await fetch('/api/log_face',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user:AU,image:cv.toDataURL('image/jpeg',.85)})});
+      const d=await r.json();
+
+      if(d.status==='match'){
+        facePts++;
+        document.getElementById('sFill').style.width=(facePts/NEED*100)+'%';
+        document.getElementById('sSt').innerText=`✓ Face matched — ${facePts}/${NEED}`;
+      } else if(d.status==='wrong_person'){
+        clearInterval(faceTimer);faceTimer=null;
+        document.getElementById('sReject').innerText='⛔ Wrong face — this account is not yours.';
+        document.getElementById('sReject').classList.remove('hidden');
+        document.getElementById('sSt').innerText='';
+        stopCam();
+        setTimeout(()=>showOnly('step0'),3000);
+        return;
+      } else {
+        document.getElementById('sSt').innerText='👁 No match — hold still and look at camera';
+      }
+
+      if(facePts>=NEED){
+        clearInterval(faceTimer);faceTimer=null;
+        stopCam();
+        voiceBusy=false;
+        voiceAttempts=0;
+        document.getElementById('vSt').innerText='Click mic to begin…';
+        document.getElementById('vSt').style.color='var(--warn)';
+        document.getElementById('vAttempts').innerText='';
+        showOnly('step2');
+      }
+    }catch(e){
+      document.getElementById('sSt').innerText='Camera error — retrying…';
+    }
+  },350);
+}
+
+// ── Voice verification — STRICT: voiceprint + exact phrase both must match ──
+// Step 1: record audio → extract voiceprint → compare with enrolled voiceprint
+// Step 2: use SpeechRecognition to get phrase text → compare with stored phrase
+// BOTH must pass. No hints shown. No bypass if data missing.
+function startVoiceVerify(){
+  if(voiceBusy)return;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){
+    document.getElementById('vSt').style.color='#ef4444';
+    document.getElementById('vSt').innerText='⚠ Browser does not support voice auth. Use Chrome.';
+    return;
+  }
+  voiceBusy=true;
+  document.getElementById('micBtn').style.opacity='0.6';
+  document.getElementById('vSt').style.color='#f59e0b';
+  document.getElementById('vSt').innerText='🔴 Recording voice… speak your phrase clearly';
+
+  // Record audio with Web Audio API for voiceprint
+  let audioCtx=null,audioSamples=[],scriptProc=null,mediaStream=null;
+
+  navigator.mediaDevices.getUserMedia({audio:true,video:false})
+  .then(stream=>{
+    mediaStream=stream;
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const src=audioCtx.createMediaStreamSource(stream);
+    scriptProc=audioCtx.createScriptProcessor(4096,1,1);
+    src.connect(scriptProc);scriptProc.connect(audioCtx.destination);
+    scriptProc.onaudioprocess=e=>{
+      audioSamples.push(...e.inputBuffer.getChannelData(0));
+    };
+
+    // Simultaneously run SpeechRecognition for phrase text
+    const rec=new SR();
+    rec.lang='en-US';
+    rec.maxAlternatives=5;
+    rec.continuous=false;
+    rec.interimResults=false;
+
+    let srResult=null,srDone=false,audioDone=false;
+
+    function tryVerify(){
+      if(!srDone||!audioDone)return;
+      // Extract voiceprint from recorded audio
+      const vp=extractVoiceprint(new Float32Array(audioSamples));
+      const vpArr=Array.from(vp);
+      // Send both voiceprint and heard alternatives to server for dual-check
+      fetch('/api/verify_voice_full',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user:AU,voiceprint:vpArr,heard:srResult||[]})
+      }).then(r=>r.json()).then(d=>{
+        document.getElementById('micBtn').style.opacity='1';
+        voiceBusy=false;
+        if(d.status==='ok'){
+          document.getElementById('vSt').style.color='#10b981';
+          document.getElementById('vSt').innerText='✓ Voice & phrase verified — opening vault…';
+          setTimeout(()=>enterVault(),900);
+        } else {
+          voiceAttempts++;
+          const rem=MAX_VOICE_ATTEMPTS-voiceAttempts;
+          document.getElementById('vSt').style.color='#ef4444';
+          // Show generic failure — no hint about which check failed
+          if(d.reason==='no_enrollment'){
+            document.getElementById('vSt').innerText='⚠ No voice enrollment found for this account.';
+          } else {
+            document.getElementById('vSt').innerText='⛔ Voice authentication failed. Try again.';
+          }
+          if(rem>0){
+            document.getElementById('vAttempts').innerText=`${rem} attempt${rem>1?'s':''} remaining`;
+          } else {
+            document.getElementById('vSt').innerText='⛔ Too many failed attempts — returning to login.';
+            document.getElementById('vAttempts').innerText='';
+            setTimeout(()=>{showOnly('step0');voiceAttempts=0;},2500);
+          }
+        }
+      }).catch(()=>{
+        voiceBusy=false;
+        document.getElementById('micBtn').style.opacity='1';
+        document.getElementById('vSt').style.color='#ef4444';
+        document.getElementById('vSt').innerText='⚠ Server error — try again.';
+      });
+    }
+
+    // Stop audio recording after 4 seconds
+    setTimeout(()=>{
+      try{
+        scriptProc.disconnect();
+        audioCtx.close();
+        mediaStream.getTracks().forEach(t=>t.stop());
+      }catch(e){}
+      audioDone=true;
+      tryVerify();
+    },4000);
+
+    rec.onresult=e=>{
+      srResult=Array.from(e.results[0]).map(a=>
+        a.transcript.toLowerCase().trim().replace(/[^a-z0-9\s]/g,''));
+      srDone=true;
+      tryVerify();
+    };
+    rec.onerror=e=>{
+      srResult=[];srDone=true;
+      tryVerify();
+    };
+    rec.onend=()=>{if(!srDone){srResult=[];srDone=true;tryVerify();}};
+    rec.start();
+  })
+  .catch(()=>{
+    voiceBusy=false;
+    document.getElementById('micBtn').style.opacity='1';
+    document.getElementById('vSt').style.color='#ef4444';
+    document.getElementById('vSt').innerText='⚠ Microphone access denied.';
+  });
+}
+
+// Extract spectral voiceprint (same algorithm as enrollment)
+function extractVoiceprint(samples){
+  const N=512,hop=256,frames=[];
+  for(let i=0;i+N<samples.length;i+=hop){
+    const f=samples.slice(i,i+N);
+    for(let j=0;j<N;j++)f[j]*=.5*(1-Math.cos(2*Math.PI*j/(N-1)));
+    const mg=new Float32Array(32);
+    for(let k=0;k<32;k++){
+      let re=0,im=0;
+      for(let n=0;n<N;n++){re+=f[n]*Math.cos(2*Math.PI*k*n/N);im-=f[n]*Math.sin(2*Math.PI*k*n/N);}
+      mg[k]=Math.sqrt(re*re+im*im);
+    }
+    frames.push(mg);
+  }
+  if(!frames.length)return new Float32Array(32);
+  const p=new Float32Array(32);
+  frames.forEach(f=>f.forEach((v,i)=>p[i]+=v));
+  for(let i=0;i<32;i++)p[i]/=frames.length;
+  const norm=Math.sqrt(p.reduce((a,b)=>a+b*b,0))||1;
+  return p.map(v=>v/norm);
+}
+
+function enterVault(){
+  // Pass username to vault via sessionStorage
+  sessionStorage.setItem('vaultUser',AU);
+  window.location.href='/vault';
+}
+</script>
+</body>
+</html>

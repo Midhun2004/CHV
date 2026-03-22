@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>CHV-Guard · Create Account</title>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --a:#7c3aed;--a2:#0ea5e9;--ok:#10b981;--warn:#f59e0b;--err:#ef4444;
+  --bg:#0a0a0f;--surf:rgba(14,14,26,.85);--bord:rgba(255,255,255,.09);
+  --tx:#e4e4f0;--mt:#6b6b8a;
+  --fn:'Space Grotesk',sans-serif;--mo:'JetBrains Mono',monospace;
+}
+html,body{min-height:100%;font-family:var(--fn);background:var(--bg);color:var(--tx);overflow-x:hidden;}
+.hidden{display:none!important;}
+#bgC{position:fixed;inset:0;z-index:0;pointer-events:none;}
+.page{min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+  align-items:center;padding:32px 16px;position:relative;z-index:5;}
+
+/* CARD */
+.card{width:min(480px,96vw);padding:42px 48px;border-radius:22px;
+  background:var(--surf);backdrop-filter:blur(26px);
+  border:1px solid var(--bord);
+  box-shadow:0 10px 48px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.06);
+  display:flex;flex-direction:column;align-items:center;
+  animation:su .42s cubic-bezier(.16,1,.3,1) both;}
+@keyframes su{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;
+  border-radius:99px;background:rgba(124,58,237,.15);
+  border:1px solid rgba(124,58,237,.35);
+  font-size:11px;font-weight:700;letter-spacing:2px;color:#a78bfa;
+  text-transform:uppercase;margin-bottom:16px;}
+.blink{width:7px;height:7px;background:var(--a);border-radius:50%;animation:bl 1.5s infinite;}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.2}}
+.card h1{font-size:clamp(22px,5vw,32px);font-weight:700;letter-spacing:-.5px;text-align:center;
+  background:linear-gradient(135deg,#fff 0%,#a78bfa 55%,#38bdf8 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;margin-bottom:6px;}
+.sub{font-size:13px;color:var(--mt);margin-bottom:22px;text-align:center;line-height:1.6;}
+
+/* INPUTS */
+.field{width:100%;margin-bottom:13px;}
+.field label{display:block;font-size:11px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--mt);margin-bottom:6px;}
+.field input{width:100%;padding:12px 15px;background:rgba(255,255,255,.04);
+  border:1px solid var(--bord);border-radius:10px;color:var(--tx);
+  font-family:var(--fn);font-size:14px;outline:none;transition:.2s;}
+.field input:focus{border-color:var(--a);box-shadow:0 0 0 3px rgba(124,58,237,.18);}
+.field input::placeholder{color:var(--mt);}
+
+/* BUTTONS */
+.bp{width:100%;padding:13px;border:none;border-radius:11px;
+  background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;
+  font-family:var(--fn);font-size:15px;font-weight:700;cursor:pointer;
+  transition:.2s;margin-top:8px;box-shadow:0 4px 24px rgba(124,58,237,.4);}
+.bp:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(124,58,237,.55);}
+.bp:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+.bg2{width:100%;padding:11px;border:1px solid var(--bord);border-radius:11px;
+  background:transparent;color:var(--mt);font-family:var(--fn);font-size:14px;
+  cursor:pointer;transition:.2s;margin-top:6px;}
+.bg2:hover{border-color:rgba(124,58,237,.4);color:var(--tx);background:rgba(124,58,237,.06);}
+
+/* ALERT */
+.ale{padding:9px 13px;border-radius:8px;font-size:13px;font-weight:500;margin-top:9px;width:100%;}
+.ale.e{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;}
+.ale.ok{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;}
+
+/* FACE SCAN */
+.scan-box{position:relative;width:240px;height:195px;border-radius:14px;overflow:hidden;
+  border:2px solid var(--a);box-shadow:0 0 28px rgba(124,58,237,.35);margin-top:10px;}
+.scan-box video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);}
+.scan-ov{position:absolute;inset:0;border-radius:12px;
+  background:linear-gradient(0deg,rgba(124,58,237,.22),transparent 60%);}
+.scan-bar{width:100%;height:5px;background:rgba(255,255,255,.08);
+  border-radius:4px;margin-top:12px;overflow:hidden;}
+.scan-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--a),var(--a2));
+  border-radius:4px;transition:width .22s;}
+.reject-msg{font-size:13px;font-weight:700;color:#ef4444;margin-top:8px;text-align:center;}
+
+/* MOUSE CAL */
+.mzone{width:100%;max-width:420px;height:175px;
+  border:2px dashed rgba(124,58,237,.35);border-radius:13px;
+  position:relative;background:rgba(124,58,237,.04);
+  overflow:hidden;margin:14px auto 0;}
+.tdot{width:30px;height:30px;background:var(--ok);border-radius:50%;
+  position:absolute;cursor:pointer;display:none;
+  box-shadow:0 0 16px rgba(16,185,129,.8);}
+
+/* VOICE */
+.mring{position:relative;width:130px;height:130px;display:flex;
+  align-items:center;justify-content:center;margin:18px auto;cursor:pointer;}
+.mcore{width:60px;height:60px;border-radius:50%;
+  background:linear-gradient(145deg,#7c3aed,#0ea5e9);
+  display:flex;align-items:center;justify-content:center;font-size:22px;z-index:2;}
+.mring .ring{position:absolute;border-radius:50%;
+  border:2px solid rgba(124,58,237,.35);animation:vw 2.4s infinite;}
+.r1{width:85px;height:85px;}.r2{width:112px;height:112px;animation-delay:.6s;}
+@keyframes vw{0%{transform:scale(.8);opacity:.8}70%{transform:scale(1.2);opacity:0}100%{opacity:0}}
+.phrase-box{width:100%;background:rgba(124,58,237,.12);
+  border:1px solid rgba(124,58,237,.3);border-radius:10px;
+  padding:10px 15px;margin-bottom:12px;text-align:center;}
+.phrase-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;
+  text-transform:uppercase;color:#a78bfa;margin-bottom:4px;}
+.phrase-txt{font-size:17px;font-weight:700;color:#fff;}
+
+/* TOAST */
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(70px);
+  background:#111;color:#fff;padding:11px 22px;border-radius:99px;
+  font-size:13px;font-weight:600;z-index:2000;opacity:0;
+  transition:.35s cubic-bezier(.16,1,.3,1);}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.err{background:#ef4444;}
+</style>
+
+</head>
+<body>
+<canvas id="bgC"></canvas>
+<div class="page" id="mainPage">
+
+  <!-- STEP R0: USERNAME + PASSWORD -->
+  <div class="card" id="r0">
+    <div class="chip"><span class="blink"></span>New Account</div>
+    <h1>Create Account</h1>
+    <p class="sub">Choose credentials, then enroll your biometrics</p>
+    <div class="field"><label>Username</label>
+      <input id="ru" placeholder="Pick a username (min 2 chars)"></div>
+    <div class="field"><label>Password</label>
+      <input id="rp" type="password" placeholder="Choose a password (min 4 chars)"></div>
+    <div id="rAlert" class="ale e hidden"></div>
+    <button class="bp" onclick="doRegister()">Next: Enroll Face →</button>
+    <a href="/" style="display:block;text-align:center;font-size:13px;color:var(--mt);
+      text-decoration:none;margin-top:12px;transition:.2s;"
+      onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='var(--mt)'">
+      ← Back to login
+    </a>
+  </div>
+
+  <!-- STEP R1: FACE ENROLLMENT -->
+  <div class="card hidden" id="r1">
+    <div class="chip"><span class="blink"></span>Face Enrollment</div>
+    <h1>Scan Your Face</h1>
+    <p class="sub">Hold still — we capture your facial baseline</p>
+    <div class="scan-box">
+      <video id="vid" autoplay muted playsinline></video>
+      <div class="scan-ov"></div>
+    </div>
+    <div class="scan-bar"><div class="scan-fill" id="rFill"></div></div>
+    <p id="rFSt" style="font-size:13px;color:var(--mt);margin-top:10px;">Starting camera…</p>
+  </div>
+
+  <!-- STEP R2: MOUSE CALIBRATION -->
+  <div class="card hidden" id="r2">
+    <div class="chip"><span class="blink"></span>Behavioral Baseline</div>
+    <h1>Mouse Calibration</h1>
+    <p class="sub">Click all 10 dots to record your movement pattern</p>
+    <div class="mzone" id="mZone">
+      <div class="tdot" id="tDot" onclick="dotClick()"></div>
+      <p id="mStartTxt" style="position:absolute;top:50%;left:50%;
+        transform:translate(-50%,-50%);color:#6b6b8a;font-size:13px;">Press start</p>
+    </div>
+    <p id="dProg" style="font-size:13px;color:var(--mt);margin:10px 0 4px;"></p>
+    <button class="bp" id="mStartBtn" onclick="startMouseCal()" style="width:auto;padding:11px 32px;">
+      Start Calibration</button>
+  </div>
+
+  <!-- STEP R3: VOICE ENROLLMENT -->
+  <div class="card hidden" id="r3">
+    <div class="chip"><span class="blink"></span>Voice Enrollment</div>
+    <h1>Record Your Phrase</h1>
+    <p class="sub">Speak any phrase you'll remember.<br>You must say it exactly on every login.</p>
+    <div class="mring" id="rMicBtn" onclick="enrollVoice()">
+      <div class="mcore">🎤</div>
+      <span class="ring r1"></span><span class="ring r2"></span>
+    </div>
+    <p id="rVSt" style="font-size:13px;font-weight:600;color:var(--warn);margin-top:6px;text-align:center;">
+      Click mic — speak your passphrase clearly</p>
+    <div id="rVEnrolled" class="hidden" style="width:100%;margin-top:10px;">
+      <div class="phrase-box">
+        <div class="phrase-lbl">Enrolled phrase:</div>
+        <div class="phrase-txt" id="enrolledTxt"></div>
+      </div>
+      <button class="bp" onclick="finishEnrollment()">Finish & Go to Login →</button>
+      <button class="bg2" onclick="reEnroll()">Re-record phrase</button>
+    </div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+(()=>{
+  const c=document.getElementById('bgC'),ctx=c.getContext('2d');
+  let W,H,P=[];
+  const sz=()=>{W=c.width=innerWidth;H=c.height=innerHeight;};sz();
+  addEventListener('resize',sz);
+  for(let i=0;i<52;i++)P.push({
+    x:Math.random()*W,y:Math.random()*H,
+    vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,
+    r:Math.random()*1.4+.4});
+  (function draw(){
+    ctx.clearRect(0,0,W,H);
+    P.forEach(p=>{p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='rgba(124,58,237,.5)';ctx.fill();});
+    P.forEach((a,i)=>P.slice(i+1).forEach(b=>{
+      const d=Math.hypot(a.x-b.x,a.y-b.y);
+      if(d<108){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);
+        ctx.strokeStyle=`rgba(124,58,237,${.09*(1-d/108)})`;
+        ctx.lineWidth=.4;ctx.stroke();}}));
+    requestAnimationFrame(draw);
+  })();
+})();
+function toast(m,t='ok'){
+  const el=document.getElementById('toast');
+  el.className='show'+(t==='err'?' err':'');
+  el.innerText=(t==='err'?'✗  ':'✓  ')+m;
+  clearTimeout(el._t);el._t=setTimeout(()=>el.className='',2800);
+}
+</script>
+
+<script>
+let AU='',cam=null,rFaceDone=false,enrolledPhrase='';
+let cCl=0,cStart=0,cTraj=[];
+
+function showR(id){
+  ['r0','r1','r2','r3'].forEach(s=>document.getElementById(s).classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function setAle(m){
+  const el=document.getElementById('rAlert');
+  if(!m){el.classList.add('hidden');return;}
+  el.classList.remove('hidden');el.innerText=m;
+}
+
+// ── STEP R0: register init ──
+async function doRegister(){
+  AU=document.getElementById('ru').value.trim();
+  const pw=document.getElementById('rp').value;
+  if(!AU||!pw){setAle('Please fill both fields.');return;}
+  if(AU.length<2){setAle('Username must be at least 2 characters.');return;}
+  if(pw.length<4){setAle('Password must be at least 4 characters.');return;}
+  setAle('');
+  const r=await fetch('/api/reg_init',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({user:AU,pwd:pw})});
+  const d=await r.json();
+  if(d.status==='exists'){setAle('Username already taken — choose another.');return;}
+  showR('r1');
+  startFaceEnroll();
+}
+
+// ── STEP R1: face enrollment ──
+function startFaceEnroll(){
+  if(cam)cam.getTracks().forEach(t=>t.stop());
+  navigator.mediaDevices.getUserMedia({video:true})
+  .then(s=>{
+    cam=s;
+    document.getElementById('vid').srcObject=s;
+    runFaceEnroll();
+  })
+  .catch(()=>{
+    document.getElementById('rFSt').innerText='⚠ Camera permission denied';
+  });
+}
+
+function runFaceEnroll(){
+  let pts=0;const NEED=18;
+  document.getElementById('rFill').style.width='0%';
+  document.getElementById('rFSt').innerText='Scanning…';
+  const t=setInterval(async()=>{
+    const v=document.getElementById('vid');
+    const cv=document.createElement('canvas');
+    cv.width=v.videoWidth||320;cv.height=v.videoHeight||240;
+    cv.getContext('2d').drawImage(v,0,0);
+    const r=await fetch('/api/reg_face',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({user:AU,image:cv.toDataURL('image/jpeg',.85)})});
+    const d=await r.json();
+    if(d.status==='found'){
+      pts++;
+      document.getElementById('rFill').style.width=(pts/NEED*100)+'%';
+      document.getElementById('rFSt').innerText=`Face captured — ${pts}/${NEED}`;
+    } else {
+      document.getElementById('rFSt').innerText='No face detected — look at camera';
+    }
+    if(pts>=NEED){
+      clearInterval(t);
+      cam.getTracks().forEach(tr=>tr.stop());cam=null;
+      showR('r2');
+    }
+  },320);
+}
+
+// ── STEP R2: mouse calibration ──
+function startMouseCal(){
+  document.getElementById('mStartBtn').classList.add('hidden');
+  document.getElementById('mStartTxt').classList.add('hidden');
+  cCl=0;cStart=Date.now();cTraj=[];moveDot();
+}
+function moveDot(){
+  const d=document.getElementById('tDot'),z=document.getElementById('mZone');
+  d.style.left=Math.random()*(z.offsetWidth-30)+'px';
+  d.style.top=Math.random()*(z.offsetHeight-30)+'px';
+  d.style.display='block';
+  document.getElementById('dProg').innerText=`${cCl}/10 dots clicked`;
+}
+async function dotClick(){
+  cCl++;
+  cTraj.push({x:parseInt(document.getElementById('tDot').style.left),
+               y:parseInt(document.getElementById('tDot').style.top),
+               t:Date.now()-cStart});
+  if(cCl>=10){
+    document.getElementById('tDot').style.display='none';
+    const prof=buildProf(cTraj);
+    await fetch('/api/reg_mouse',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({user:AU,baseline:prof})});
+    showR('r3');
+  } else moveDot();
+}
+function buildProf(traj){
+  const sp=[],rh=[];
+  for(let i=1;i<traj.length;i++){
+    const dx=traj[i].x-traj[i-1].x,dy=traj[i].y-traj[i-1].y,dt=(traj[i].t-traj[i-1].t)||1;
+    sp.push(Math.sqrt(dx*dx+dy*dy)/dt);rh.push(dt);
+  }
+  const avg=a=>a.reduce((s,v)=>s+v,0)/a.length;
+  const std=a=>{const m=avg(a);return Math.sqrt(avg(a.map(x=>(x-m)**2)));};
+  return{avgSpeed:avg(sp),stdSpeed:std(sp),avgRhythm:avg(rh),stdRhythm:std(rh)};
+}
+
+// ── STEP R3: voice enrollment — capture BOTH voiceprint + phrase text ──
+function enrollVoice(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){
+    document.getElementById('rVSt').style.color='#ef4444';
+    document.getElementById('rVSt').innerText='⚠ Browser does not support speech recognition. Use Chrome.';
+    return;
+  }
+  document.getElementById('rVSt').style.color='#f59e0b';
+  document.getElementById('rVSt').innerText='🔴 Recording… speak your phrase now';
+  document.getElementById('rMicBtn').style.opacity='0.5';
+  document.getElementById('rVEnrolled').classList.add('hidden');
+
+  let audioCtx=null,audioSamples=[],scriptProc=null,mediaStream=null;
+
+  navigator.mediaDevices.getUserMedia({audio:true,video:false})
+  .then(stream=>{
+    mediaStream=stream;
+    audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const src=audioCtx.createMediaStreamSource(stream);
+    scriptProc=audioCtx.createScriptProcessor(4096,1,1);
+    src.connect(scriptProc);scriptProc.connect(audioCtx.destination);
+    scriptProc.onaudioprocess=e=>{
+      audioSamples.push(...e.inputBuffer.getChannelData(0));
+    };
+
+    let srPhrase='',srDone=false,audioDone=false;
+
+    function trySave(){
+      if(!srDone||!audioDone)return;
+      if(!srPhrase){
+        document.getElementById('rMicBtn').style.opacity='1';
+        document.getElementById('rVSt').style.color='#ef4444';
+        document.getElementById('rVSt').innerText='⚠ No speech detected. Try again.';
+        return;
+      }
+      const vp=extractVoiceprint(new Float32Array(audioSamples));
+      const vpArr=Array.from(vp);
+      fetch('/api/reg_voice',{method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user:AU,phrase:srPhrase,voiceprint:vpArr})
+      }).then(()=>{
+        document.getElementById('rMicBtn').style.opacity='1';
+        document.getElementById('rVSt').style.color='#10b981';
+        document.getElementById('rVSt').innerText='✓ Voice & phrase enrolled!';
+        document.getElementById('enrolledTxt').innerText=`"${srPhrase}"`;
+        document.getElementById('rVEnrolled').classList.remove('hidden');
+        enrolledPhrase=srPhrase;
+      });
+    }
+
+    setTimeout(()=>{
+      try{scriptProc.disconnect();audioCtx.close();mediaStream.getTracks().forEach(t=>t.stop());}catch(e){}
+      audioDone=true;trySave();
+    },4000);
+
+    const rec=new SR();
+    rec.lang='en-US';rec.maxAlternatives=1;rec.continuous=false;rec.interimResults=false;
+    rec.onresult=e=>{
+      srPhrase=e.results[0][0].transcript.toLowerCase().trim().replace(/[^a-z0-9\s]/g,'');
+      srDone=true;trySave();
+    };
+    rec.onerror=()=>{srPhrase='';srDone=true;trySave();};
+    rec.onend=()=>{if(!srDone){srPhrase='';srDone=true;trySave();}};
+    rec.start();
+  })
+  .catch(()=>{
+    document.getElementById('rMicBtn').style.opacity='1';
+    document.getElementById('rVSt').style.color='#ef4444';
+    document.getElementById('rVSt').innerText='⚠ Microphone access denied.';
+  });
+}
+
+// Extract spectral voiceprint (shared with login)
+function extractVoiceprint(samples){
+  const N=512,hop=256,frames=[];
+  for(let i=0;i+N<samples.length;i+=hop){
+    const f=samples.slice(i,i+N);
+    for(let j=0;j<N;j++)f[j]*=.5*(1-Math.cos(2*Math.PI*j/(N-1)));
+    const mg=new Float32Array(32);
+    for(let k=0;k<32;k++){
+      let re=0,im=0;
+      for(let n=0;n<N;n++){re+=f[n]*Math.cos(2*Math.PI*k*n/N);im-=f[n]*Math.sin(2*Math.PI*k*n/N);}
+      mg[k]=Math.sqrt(re*re+im*im);
+    }
+    frames.push(mg);
+  }
+  if(!frames.length)return new Float32Array(32);
+  const p=new Float32Array(32);
+  frames.forEach(f=>f.forEach((v,i)=>p[i]+=v));
+  for(let i=0;i<32;i++)p[i]/=frames.length;
+  const norm=Math.sqrt(p.reduce((a,b)=>a+b*b,0))||1;
+  return p.map(v=>v/norm);
+}
+
+function reEnroll(){
+  enrolledPhrase='';
+  document.getElementById('rVEnrolled').classList.add('hidden');
+  document.getElementById('rVSt').style.color='var(--warn)';
+  document.getElementById('rVSt').innerText='Click mic — speak your passphrase clearly';
+}
+
+function finishEnrollment(){
+  toast('Account created! Please login.');
+  setTimeout(()=>window.location.href='/',1200);
+}
+</script>
+</body>
+</html>
